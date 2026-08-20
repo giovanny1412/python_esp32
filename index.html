@@ -1,122 +1,248 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control ESP32 con Web Serial</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f9; color: #333; }
-        h1 { color: #0066cc; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #0066cc; color: white; border: none; border-radius: 5px; margin-right: 10px; }
-        button:hover { background: #0051a2; }
-        #terminal { width: 100%; height: 250px; background: #1e1e1e; color: #00ff00; font-family: monospace; padding: 10px; box-sizing: border-box; overflow-y: scroll; border-radius: 5px; margin-top: 20px; }
-        .controls { margin-top: 15px; }
-        input[type="text"] { padding: 8px; width: 300px; font-size: 16px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Programador Blockly MicroPython para ESP32</title>
+
+  <!-- Carga de Blockly y Generador de Python -->
+  <script src="https://unpkg.com/blockly/blockly_compressed.js"></script>
+  <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
+  <script src="https://unpkg.com/blockly/python_compressed.js"></script>
+  <script src="https://unpkg.com/blockly/msg/es.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-color: #f4f6f8;
+    }
+    header {
+      background-color: #1e293b;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      font-size: 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+    }
+    #main-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 60px);
+    }
+    #blocklyDiv {
+      flex: 2;
+      height: 100%;
+    }
+    #consolePanel {
+      flex: 1;
+      background-color: #0f172a;
+      color: #38bdf8;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      border-left: 2px solid #334155;
+      font-family: monospace;
+    }
+    #consoleLog {
+      flex: 1;
+      background: #020617;
+      color: #22c55e;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: 13px;
+      border: 1px solid #1e293b;
+    }
+  </style>
 </head>
 <body>
 
-    <h1>Programar ESP32 desde GitHub Pages</h1>
-    <p>Conecta tu ESP32 por USB y presiona el botón para interactuar mediante Web Serial.</p>
-
-    <button id="connectBtn">Conectar ESP32</button>
-    <button id="disconnectBtn" style="background: #cc0000; display:none;">Desconectar</button>
-
+  <header>
+    <h2>ESP32 MicroPython Studio</h2>
     <div class="controls">
-        <input type="text" id="commandInput" placeholder="Escribe comando MicroPython (ej. print('Hola'))">
-        <button id="sendBtn" disabled>Enviar</button>
+      <button id="btnConectar" onclick="conectarPuerto()">🔌 Conectar ESP32</button>
+      <button id="btnSubir" onclick="subirAMicroPython()">🚀 Subir Código (Instantáneo)</button>
     </div>
+  </header>
 
-    <div id="terminal">Consola de comunicación...\n</div>
+  <div id="main-container">
+    <div id="blocklyDiv"></div>
+    <div id="consolePanel">
+      <h3>Consola Serie / Estado</h3>
+      <div id="consoleLog">>> Listo para conectar con la tarjeta ESP32...</div>
+    </div>
+  </div>
 
-    <script>
-        let port;
-        let reader;
-        let keepReading = false;
+  <!-- Definición del Toolbox de Blockly -->
+  <xml id="toolbox" style="display: none">
+    <category name="ESP32 GPIO" colour="#A85B5B">
+      <block type="esp32_digital_write"></block>
+      <block type="esp32_delay"></block>
+    </category>
+    <category name="Lógica" colour="#5b80a5">
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+    </category>
+    <category name="Bucles" colour="#5ba55b">
+      <block type="controls_repeat_ext">
+        <value name="TIMES">
+          <shadow type="math_number">
+            <field name="NUM">10</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="controls_whileUntil"></block>
+    </category>
+    <category name="Matemáticas" colour="#5b67a5">
+      <block type="math_number"></block>
+    </category>
+  </xml>
 
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const sendBtn = document.getElementById('sendBtn');
-        const commandInput = document.getElementById('commandInput');
-        const terminal = document.getElementById('terminal');
+  <script>
+    let port = null;
+    let writer = null;
+    let reader = null;
 
-        function appendToTerminal(text) {
-            terminal.innerText += text;
-            terminal.scrollTop = terminal.scrollHeight;
+    // 1. REGISTRO DE BLOQUES PERSONALIZADOS PARA MICROPYTHON
+    Blockly.Blocks['esp32_digital_write'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("Escritura Digital Pin")
+            .appendField(new Blockly.FieldNumber(2, 0, 39), "PIN")
+            .appendField("Estado")
+            .appendField(new Blockly.FieldDropdown([["ALTO (1)","1"], ["BAJO (0)","0"]]), "STATE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(0);
+        this.setTooltip("Escribe un valor alto o bajo en el GPIO seleccionado.");
+      }
+    };
+
+    Blockly.Python['esp32_digital_write'] = function(block) {
+      var pin = block.getFieldValue('PIN');
+      var state = block.getFieldValue('STATE');
+      return `Pin(${pin}, Pin.OUT).value(${state})\n`;
+    };
+
+    Blockly.Blocks['esp32_delay'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("Esperar (segundos)")
+            .appendField(new Blockly.FieldNumber(1, 0, 3600), "SECONDS");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(60);
+      }
+    };
+
+    Blockly.Python['esp32_delay'] = function(block) {
+      var seconds = block.getFieldValue('SECONDS');
+      return `time.sleep(${seconds})\n`;
+    };
+
+    // 2. INICIALIZAR WORKSPACE DE BLOCKLY
+    const workspace = Blockly.inject('blocklyDiv', {
+      toolbox: document.getElementById('toolbox'),
+      scrollbars: true
+    });
+
+    function log(msg) {
+      const consoleLog = document.getElementById("consoleLog");
+      consoleLog.innerHTML += "\n" + msg;
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    // 3. CONEXIÓN POR WEB SERIAL
+    async function conectarPuerto() {
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+        
+        const textEncoder = new TextEncoderStream();
+        const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+        writer = textEncoder.writable.getWriter();
+
+        log(">> Conectado exitosamente al puerto serie.");
+        document.getElementById("btnConectar").innerText = "🟢 Conectado";
+      } catch (err) {
+        log(">> ERROR al conectar: " + err.message);
+      }
+    }
+
+    // 4. ENVÍO DIRECTO DE CÓDIGO PYTHON A LA ESP32 (RAW REPL)
+    async function subirAMicroPython() {
+      if (!writer) {
+        alert("Por favor conecta la ESP32 primero usando el botón 'Conectar ESP32'.");
+        return;
+      }
+
+      // Generación del código en el navegador
+      let userCode = Blockly.Python.workspaceToCode(workspace);
+      
+      // Estructura completa incluyendo importaciones requeridas
+      let fullPythonCode = "from machine import Pin\nimport time\n\nwhile True:\n";
+      
+      // Indentar el código del usuario dentro del bucle principal
+      const lines = userCode.split('\n');
+      for (let line of lines) {
+        if (line.trim().length > 0) {
+          fullPythonCode += "    " + line + "\n";
         }
+      }
 
-        // 1. Conectar al ESP32 por Web Serial
-        connectBtn.addEventListener('click', async () => {
-            try {
-                // Solicita al usuario que elija el puerto COM de su ESP32
-                port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 }); // Baudrate estándar para MicroPython
+      log(">> Enviando programa a la ESP32...");
 
-                connectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'inline-block';
-                sendBtn.disabled = false;
-                appendToTerminal('\n[Sistema] Conectado exitosamente al ESP32.\n');
+      try {
+        // Enviar Ctrl+C para interrumprir ejecuciones previas
+        await writer.write("\x03\x03");
+        await new Promise(r => setTimeout(r, 300));
 
-                keepReading = true;
-                readLoop();
-            } catch (error) {
-                console.error('Error al conectar:', error);
-                alert('No se pudo conectar al puerto serial.');
-            }
-        });
+        // Entrar en modo Raw REPL
+        await writer.write("\x01");
+        await new Promise(r => setTimeout(r, 300));
 
-        // 2. Leer datos continuos que envía el ESP32
-        async function readLoop() {
-            const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-            reader = textDecoder.readable.getReader();
+        // Comando para escribir el archivo main.py en la flash
+        let fileWriteCmd = `f = open('main.py', 'w')\nf.write('''${fullPythonCode}''')\nf.close()\n`;
+        await writer.write(fileWriteCmd);
+        await new Promise(r => setTimeout(r, 500));
 
-            try {
-                while (keepReading) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    if (value) {
-                        appendToTerminal(value);
-                    }
-                }
-            } catch (error) {
-                console.error('Error de lectura:', error);
-            } finally {
-                reader.releaseLock();
-            }
-        }
+        // Salir de Raw REPL y reiniciar
+        await writer.write("\x04");
+        await new Promise(r => setTimeout(r, 200));
+        await writer.write("\x04");
 
-        // 3. Enviar comandos escritos al ESP32
-        async function sendCommand() {
-            const command = commandInput.value;
-            if (!port || !command) return;
-
-            const textEncoder = new TextEncoderStream();
-            const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
-            const writer = textEncoder.writable.getWriter();
-
-            await writer.write(command + '\r\n');
-            commandInput.value = '';
-            await writer.close();
-        }
-
-        sendBtn.addEventListener('click', sendCommand);
-        commandInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendCommand();
-        });
-
-        // 4. Desconectar
-        disconnectBtn.addEventListener('click', async () => {
-            keepReading = false;
-            if (reader) await reader.cancel();
-            if (port) await port.close();
-
-            connectBtn.style.display = 'inline-block';
-            disconnectBtn.style.display = 'none';
-            sendBtn.disabled = true;
-            appendToTerminal('\n[Sistema] Desconectado.\n');
-        });
-    </script>
-
+        log(">> ¡Programa cargado y ejecutándose en main.py!");
+      } catch (err) {
+        log(">> ERROR en la transferencia: " + err.message);
+      }
+    }
+  </script>
 </body>
 </html>
