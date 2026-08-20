@@ -96,6 +96,14 @@
       <block type="esp32_sensor_sound"><field name="PIN">33</field></block>
       <block type="esp32_sensor_joystick"><field name="PIN_X">34</field><field name="PIN_Y">35</field><field name="PIN_BTN">25</field></block>
     </category>
+    <category name="🔴 Sensores Digitales" colour="#ef4444">
+      <block type="esp32_sensor_pir"><field name="PIN">14</field></block>
+      <block type="esp32_sensor_sound_digital"><field name="PIN">27</field></block>
+      <block type="esp32_sensor_obstacle"><field name="PIN">26</field></block>
+      <block type="esp32_sensor_magnetic"><field name="PIN">18</field></block>
+      <block type="esp32_sensor_flame"><field name="PIN">19</field></block>
+      <block type="esp32_sensor_limit_switch"><field name="PIN">23</field></block>
+    </category>
     <category name="🔀 Lógica" colour="#5b80a5">
       <block type="logic_compare"></block>
       <block type="logic_operation"></block>
@@ -394,7 +402,7 @@
     Blockly.Blocks["esp32_sensor_sound"] = {
       init: function () {
         this.appendDummyInput()
-          .appendField("🎤 Leer sensor de sonido pin:")
+          .appendField("🎤 Leer sensor de sonido analogico pin:")
           .appendField(new Blockly.FieldNumber(33, 0, 48, 1), "PIN");
         this.setOutput(true, "Number");
         this.setColour("#10b981");
@@ -435,6 +443,74 @@
         this.setOutput(true, "Number");
         this.setColour("#5b67a5");
         this.setTooltip("Mapea un valor de un rango a otro.");
+      }
+    };
+
+    // ---------- BLOQUES SENSORES DIGITALES ----------
+
+    Blockly.Blocks["esp32_sensor_pir"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🏃 Leer sensor PIR (movimiento) pin:")
+          .appendField(new Blockly.FieldNumber(14, 0, 48, 1), "PIN");
+        this.setOutput(true, "Boolean");
+        this.setColour("#ef4444");
+        this.setTooltip("HC-SR501. Retorna True (1) si detecta movimiento, False (0) si no.");
+      }
+    };
+
+    Blockly.Blocks["esp32_sensor_sound_digital"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔊 Leer sensor de sonido digital pin:")
+          .appendField(new Blockly.FieldNumber(27, 0, 48, 1), "PIN");
+        this.setOutput(true, "Boolean");
+        this.setColour("#ef4444");
+        this.setTooltip("Salida DO. Retorna True si el ruido supera el umbral ajustado.");
+      }
+    };
+
+    Blockly.Blocks["esp32_sensor_obstacle"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🚧 Leer sensor de obstaculos IR pin:")
+          .appendField(new Blockly.FieldNumber(26, 0, 48, 1), "PIN");
+        this.setOutput(true, "Boolean");
+        this.setColour("#ef4444");
+        this.setTooltip("FC-51. Retorna True si detecta un objeto cercano.");
+      }
+    };
+
+    Blockly.Blocks["esp32_sensor_magnetic"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🧲 Leer sensor magnetico (Reed) pin:")
+          .appendField(new Blockly.FieldNumber(18, 0, 48, 1), "PIN");
+        this.setOutput(true, "Boolean");
+        this.setColour("#ef4444");
+        this.setTooltip("KY-003. Retorna True al acercar un iman.");
+      }
+    };
+
+    Blockly.Blocks["esp32_sensor_flame"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔥 Leer sensor de flama IR pin:")
+          .appendField(new Blockly.FieldNumber(19, 0, 48, 1), "PIN");
+        this.setOutput(true, "Boolean");
+        this.setColour("#ef4444");
+        this.setTooltip("Retorna True al detectar luz de fuego.");
+      }
+    };
+
+    Blockly.Blocks["esp32_sensor_limit_switch"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔘 Leer final de carrera pin:")
+          .appendField(new Blockly.FieldNumber(23, 0, 48, 1), "PIN");
+        this.setOutput(true, "Boolean");
+        this.setColour("#ef4444");
+        this.setTooltip("Interruptor de limite. Retorna True al presionarse.");
       }
     };
 
@@ -568,7 +644,7 @@
       return `_ble.gap_scan(None)\n`;
     };
 
-    // ---------- GENERADORES SENSORES ----------
+    // ---------- GENERADORES SENSORES ANALOGICOS ----------
 
     Blockly.Python.forBlock["esp32_sensor_ldr"] = function (block, generator) {
       generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
@@ -613,52 +689,90 @@
       return [`_map(${value}, ${inMin}, ${inMax}, ${outMin}, ${outMax})`, ORDER_ATOMIC];
     };
 
+    // ---------- GENERADORES SENSORES DIGITALES ----------
+
+    Blockly.Python.forBlock["esp32_sensor_pir"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      const pin = block.getFieldValue("PIN");
+      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_sensor_sound_digital"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      const pin = block.getFieldValue("PIN");
+      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_sensor_obstacle"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      const pin = block.getFieldValue("PIN");
+      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_sensor_magnetic"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      const pin = block.getFieldValue("PIN");
+      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_sensor_flame"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      const pin = block.getFieldValue("PIN");
+      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_sensor_limit_switch"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      const pin = block.getFieldValue("PIN");
+      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+    };
+
     // ============================================
     // INICIALIZAR WORKSPACE
     // ============================================
 
-    const workspace = Blockly.inject('blocklyDiv', {
-      toolbox: document.getElementById('toolbox'),
+    const workspace = Blockly.inject("blocklyDiv", {
+      toolbox: document.getElementById("toolbox"),
       trashcan: true,
       scrollbars: true,
       zoom: { controls: true, wheel: true, startScale: 0.9 },
       move: { scrollbars: true, drag: true, wheel: false },
-      grid: { spacing: 25, length: 3, colour: '#334155', snap: false }
+      grid: { spacing: 25, length: 3, colour: "#334155", snap: false }
     });
 
     function dedentUnLevel(code) {
-      return code.split('\n').map(line => line.startsWith('    ') ? line.slice(4) : line).join('\n');
+      return code.split("\n").map(line => line.startsWith("    ") ? line.slice(4) : line).join("\n");
     }
 
     function generarCodigoCompleto() {
-      const boardName = document.getElementById('boardSelect').value;
+      const boardName = document.getElementById("boardSelect").value;
       const topBlocks = workspace.getTopBlocks(true);
-      const setupBlock = topBlocks.find(b => b.type === 'esp32_setup');
-      const loopBlock = topBlocks.find(b => b.type === 'esp32_loop');
+      const setupBlock = topBlocks.find(b => b.type === "esp32_setup");
+      const loopBlock = topBlocks.find(b => b.type === "esp32_loop");
 
       Blockly.Python.init(workspace);
-      const setupCode = setupBlock ? Blockly.Python.statementToCode(setupBlock, 'STACK') : '';
-      const loopCode = loopBlock ? Blockly.Python.statementToCode(loopBlock, 'STACK') : '';
-      const preamble = Blockly.Python.finish('').trim();
+      const setupCode = setupBlock ? Blockly.Python.statementToCode(setupBlock, "STACK") : "";
+      const loopCode = loopBlock ? Blockly.Python.statementToCode(loopBlock, "STACK") : "";
+      const preamble = Blockly.Python.finish("").trim();
 
       let out = `# Placa objetivo: ${boardName}\n`;
-      if (preamble) out += preamble + '\n\n';
+      if (preamble) out += preamble + "\n\n";
       if (!setupBlock && !loopBlock) {
         return out + '# Arrastra el bloque "⚙️ CONFIGURACION" y/o "🔁 BUCLE PRINCIPAL" desde la categoria Control para empezar.\n';
       }
       if (setupCode.trim()) {
-        out += '# --- Configuracion inicial ---\n' + dedentUnLevel(setupCode) + '\n';
+        out += "# --- Configuracion inicial ---\n" + dedentUnLevel(setupCode) + "\n";
       }
-      out += '\n# --- Bucle principal ---\nwhile True:\n';
-      out += loopCode.trim() ? loopCode : '    pass\n';
+      out += "\n# --- Bucle principal ---\nwhile True:\n";
+      out += loopCode.trim() ? loopCode : "    pass\n";
       return out;
     }
 
     function actualizarVistaPrevia() {
       try {
-        document.getElementById('codePreview').innerText = generarCodigoCompleto();
+        document.getElementById("codePreview").innerText = generarCodigoCompleto();
       } catch (e) {
-        document.getElementById('codePreview').innerText = '# Error generando codigo:\n# ' + e.message;
+        document.getElementById("codePreview").innerText = "# Error generando codigo:\n# " + e.message;
         console.error(e);
       }
     }
@@ -667,14 +781,14 @@
       if (event.isUiEvent) return;
       actualizarVistaPrevia();
     });
-    document.getElementById('boardSelect').addEventListener('change', actualizarVistaPrevia);
+    document.getElementById("boardSelect").addEventListener("change", actualizarVistaPrevia);
 
     Blockly.serialization.workspaces.load({
       blocks: {
         languageVersion: 0,
         blocks: [
-          { type: 'esp32_setup', x: 40, y: 40 },
-          { type: 'esp32_loop', x: 40, y: 160 }
+          { type: "esp32_setup", x: 40, y: 40 },
+          { type: "esp32_loop", x: 40, y: 160 }
         ]
       }
     }, workspace);
@@ -691,8 +805,8 @@
     // ============================================
 
     async function conectarPuerto() {
-      if (!('serial' in navigator)) {
-        alert('Este navegador no soporta Web Serial. Usa Chrome o Edge en computadora.');
+      if (!("serial" in navigator)) {
+        alert("Este navegador no soporta Web Serial. Usa Chrome o Edge en computadora.");
         return;
       }
       try {
@@ -721,7 +835,9 @@
         await writer.write("\x01");
         await new Promise(r => setTimeout(r, 300));
         const escaped = fullPythonCode.replace(/\\/g, '\\\\').replace(/'''/g, "\\'\\'\\'");
-        let fileWriteCmd = `f = open('main.py', 'w')\nf.write('''${escaped}''')\nf.close()\n`;
+        let fileWriteCmd = "f = open('main.py', 'w')\n" +
+                           "f.write('''" + escaped + "''')\n" +
+                           "f.close()\n";
         await writer.write(fileWriteCmd);
         await new Promise(r => setTimeout(r, 500));
         await writer.write("\x04");
