@@ -111,6 +111,27 @@
     <category name="📏 Distancia" colour="#6366f1">
       <block type="esp32_ultrasonic"><field name="TRIG">5</field><field name="ECHO">18</field></block>
     </category>
+    <category name="🔗 I2C" colour="#0891b2">
+      <block type="esp32_i2c_init"><field name="SDA">21</field><field name="SCL">22</field></block>
+    </category>
+    <category name="🧭 Sensores I2C Avanzados" colour="#7c3aed">
+      <block type="esp32_vl53l0x_read"></block>
+      <block type="esp32_mpu6050_read"></block>
+      <block type="esp32_tcs34725_read"></block>
+    </category>
+    <category name="🌦️ Clima y Ambiente" colour="#06b6d4">
+      <block type="esp32_dht_read"><field name="TYPE">DHT22</field><field name="PIN">4</field></block>
+      <block type="esp32_bmp_bme_read"><field name="TYPE">BME280</field></block>
+    </category>
+    <category name="🖥️ Pantalla OLED 128x64" colour="#0891b2">
+      <block type="esp32_oled_init"></block>
+      <block type="esp32_oled_clear"></block>
+      <block type="esp32_oled_text"><field name="X">0</field><field name="Y">0</field></block>
+      <block type="esp32_oled_show"></block>
+    </category>
+    <category name="💨 Sensores de Gas (MQ)" colour="#84cc16">
+      <block type="esp32_sensor_mq"><field name="TYPE">MQ-2</field><field name="PIN">32</field></block>
+    </category>
     <category name="🔀 Lógica" colour="#5b80a5">
       <block type="logic_compare"></block>
       <block type="logic_operation"></block>
@@ -569,6 +590,148 @@
       }
     };
 
+    // ---------- BLOQUES I2C ----------
+
+    Blockly.Blocks["esp32_i2c_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔗 Inicializar bus I2C  SDA:")
+          .appendField(new Blockly.FieldNumber(21, 0, 48, 1), "SDA")
+          .appendField("SCL:")
+          .appendField(new Blockly.FieldNumber(22, 0, 48, 1), "SCL");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0891b2");
+        this.setTooltip("Colocalo en CONFIGURACION antes de usar cualquier sensor I2C (VL53L0X, MPU6050, TCS34725, BMP280/BME280, pantalla OLED).");
+      }
+    };
+
+    // ---------- BLOQUES SENSORES I2C AVANZADOS ----------
+
+    Blockly.Blocks["esp32_vl53l0x_read"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📏 Leer distancia VL53L0X (laser ToF)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado y subir una vez el archivo vl53l0x.py a la placa (con Thonny). Retorna la distancia en milimetros.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mpu6050_read"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧭 Leer MPU6050 (acelerometro/giroscopio)");
+        this.setOutput(true, null);
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna tupla (ax, ay, az, gx, gy, gz) en g y grados/seg.");
+      }
+    };
+
+    Blockly.Blocks["esp32_tcs34725_read"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🎨 Leer color TCS34725");
+        this.setOutput(true, null);
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna tupla (rojo, verde, azul, claridad).");
+      }
+    };
+
+    // ---------- BLOQUES CLIMA Y AMBIENTE ----------
+
+    Blockly.Blocks["esp32_dht_read"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌡️💧 Leer sensor")
+          .appendField(new Blockly.FieldDropdown([["DHT11", "DHT11"], ["DHT22", "DHT22"]]), "TYPE")
+          .appendField("pin:")
+          .appendField(new Blockly.FieldNumber(4, 0, 48, 1), "PIN");
+        this.setOutput(true, null);
+        this.setColour("#06b6d4");
+        this.setTooltip("Retorna una tupla (temperatura en C, humedad en %).");
+      }
+    };
+
+    Blockly.Blocks["esp32_bmp_bme_read"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌡️📊 Leer")
+          .appendField(new Blockly.FieldDropdown([["BME280 (temp/presion/humedad)", "BME280"], ["BMP280 (temp/presion)", "BMP280"]]), "TYPE");
+        this.setOutput(true, null);
+        this.setColour("#06b6d4");
+        this.setTooltip("Requiere el bus I2C inicializado. BME280 retorna (temperatura C, presion hPa, humedad %). BMP280 retorna (temperatura C, presion hPa, None).");
+      }
+    };
+
+    // ---------- BLOQUES PANTALLA OLED 128x64 ----------
+
+    Blockly.Blocks["esp32_oled_init"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🖥️ Inicializar pantalla OLED 128x64 (SSD1306)");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0891b2");
+        this.setTooltip("Colocalo en CONFIGURACION, despues de Inicializar bus I2C.");
+      }
+    };
+
+    Blockly.Blocks["esp32_oled_clear"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧹 OLED limpiar pantalla (buffer)");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0891b2");
+      }
+    };
+
+    Blockly.Blocks["esp32_oled_text"] = {
+      init: function () {
+        this.appendValueInput("TEXT").appendField("📝 OLED escribir texto:");
+        this.appendDummyInput()
+          .appendField("x:")
+          .appendField(new Blockly.FieldNumber(0, 0, 128, 1), "X")
+          .appendField("y:")
+          .appendField(new Blockly.FieldNumber(0, 0, 64, 1), "Y");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0891b2");
+        this.setTooltip("Escribe texto en el buffer. Usa 'OLED actualizar pantalla' para mostrarlo en la pantalla fisica.");
+      }
+    };
+
+    Blockly.Blocks["esp32_oled_show"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🔄 OLED actualizar pantalla");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0891b2");
+        this.setTooltip("Muestra en la pantalla fisica lo escrito en el buffer.");
+      }
+    };
+
+    // ---------- BLOQUES SENSORES DE GAS (MQ) ----------
+
+    Blockly.Blocks["esp32_sensor_mq"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("💨 Leer sensor de gas")
+          .appendField(new Blockly.FieldDropdown([
+            ["MQ-2 (Gas/Humo/GLP)", "MQ-2"],
+            ["MQ-3 (Alcohol)", "MQ-3"],
+            ["MQ-4 (Gas Natural/Metano)", "MQ-4"],
+            ["MQ-5 (GLP/Gas Natural)", "MQ-5"],
+            ["MQ-6 (GLP/Butano)", "MQ-6"],
+            ["MQ-7 (Monoxido de Carbono)", "MQ-7"],
+            ["MQ-8 (Hidrogeno)", "MQ-8"],
+            ["MQ-9 (CO/Gas Inflamable)", "MQ-9"],
+            ["MQ-135 (Calidad de Aire/CO2)", "MQ-135"]
+          ]), "TYPE")
+          .appendField("pin:")
+          .appendField(new Blockly.FieldNumber(32, 0, 48, 1), "PIN");
+        this.setOutput(true, "Number");
+        this.setColour("#84cc16");
+        this.setTooltip("Lee el valor analogico crudo (0-65535). Para convertir a ppm se necesita calibrar segun la hoja de datos de cada sensor.");
+      }
+    };
+
     // ============================================
     // GENERADORES DE CODIGO PYTHON
     // ============================================
@@ -823,6 +986,220 @@
       code += `    return (time.ticks_diff(fin, inicio) * 0.0343) / 2\n`;
       generator.definitions_[`ultrasonic_${trig}_${echo}_func`] = code;
       return [`_ultra_${trig}_${echo}()`, ORDER_ATOMIC];
+    };
+
+    // ---------- GENERADORES I2C ----------
+
+    Blockly.Python.forBlock["esp32_i2c_init"] = function (block, generator) {
+      generator.definitions_["import_machine_i2c"] = "from machine import I2C, Pin";
+      const sda = block.getFieldValue("SDA");
+      const scl = block.getFieldValue("SCL");
+      return `_i2c = I2C(0, scl=Pin(${scl}), sda=Pin(${sda}), freq=400000)\n`;
+    };
+
+    // ---------- GENERADORES SENSORES I2C AVANZADOS ----------
+
+    Blockly.Python.forBlock["esp32_vl53l0x_read"] = function (block, generator) {
+      generator.definitions_["vl53l0x_state"] = "_vl53 = None";
+      generator.definitions_["vl53l0x_func"] =
+`def _leer_vl53l0x():
+    global _vl53
+    if _vl53 is None:
+        from vl53l0x import VL53L0X
+        _vl53 = VL53L0X(_i2c)
+        _vl53.start()
+    return _vl53.read()`;
+      return [`_leer_vl53l0x()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_mpu6050_read"] = function (block, generator) {
+      generator.definitions_["mpu6050_state"] = "_mpu_ready = False";
+      generator.definitions_["mpu6050_func"] =
+`def _leer_mpu6050():
+    global _mpu_ready
+    addr = 0x68
+    if not _mpu_ready:
+        _i2c.writeto_mem(addr, 0x6B, bytes([0x00]))
+        _mpu_ready = True
+    d = _i2c.readfrom_mem(addr, 0x3B, 14)
+    def _s16(h, l):
+        v = (h << 8) | l
+        return v - 65536 if v > 32767 else v
+    ax = _s16(d[0], d[1]) / 16384.0
+    ay = _s16(d[2], d[3]) / 16384.0
+    az = _s16(d[4], d[5]) / 16384.0
+    gx = _s16(d[8], d[9]) / 131.0
+    gy = _s16(d[10], d[11]) / 131.0
+    gz = _s16(d[12], d[13]) / 131.0
+    return (ax, ay, az, gx, gy, gz)`;
+      return [`_leer_mpu6050()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_tcs34725_read"] = function (block, generator) {
+      generator.definitions_["import_time"] = "import time";
+      generator.definitions_["tcs34725_state"] = "_tcs_ready = False";
+      generator.definitions_["tcs34725_func"] =
+`def _leer_tcs34725():
+    global _tcs_ready
+    addr = 0x29
+    if not _tcs_ready:
+        _i2c.writeto_mem(addr, 0x80, bytes([0x03]))
+        time.sleep_ms(3)
+        _i2c.writeto_mem(addr, 0x81, bytes([0xC0]))
+        _i2c.writeto_mem(addr, 0x8F, bytes([0x00]))
+        _tcs_ready = True
+    d = _i2c.readfrom_mem(addr, 0xB4, 8)
+    c = d[0] | (d[1] << 8)
+    r = d[2] | (d[3] << 8)
+    g = d[4] | (d[5] << 8)
+    b = d[6] | (d[7] << 8)
+    return (r, g, b, c)`;
+      return [`_leer_tcs34725()`, ORDER_ATOMIC];
+    };
+
+    // ---------- GENERADORES CLIMA Y AMBIENTE ----------
+
+    Blockly.Python.forBlock["esp32_dht_read"] = function (block, generator) {
+      generator.definitions_["import_dht"] = "import dht";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      const type = block.getFieldValue("TYPE");
+      const pin = block.getFieldValue("PIN");
+      const varName = `_dht_${pin}`;
+      const funcName = `_leer_dht_${pin}`;
+      generator.definitions_[`dht_${pin}_init`] = `${varName} = dht.${type}(Pin(${pin}))`;
+      generator.definitions_[`dht_${pin}_func`] =
+`def ${funcName}():
+    ${varName}.measure()
+    return (${varName}.temperature(), ${varName}.humidity())`;
+      return [`${funcName}()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_bmp_bme_read"] = function (block, generator) {
+      const type = block.getFieldValue("TYPE");
+      const isBme = type === "BME280" ? "True" : "False";
+      generator.definitions_["bmp280_state"] = "_bmp_ready = False\n_bmp_cal = {}";
+      generator.definitions_["bmp280_func"] =
+`def _leer_bmp_bme(es_bme):
+    global _bmp_ready, _bmp_cal
+    addr = 0x76
+    if not _bmp_ready:
+        if es_bme:
+            _i2c.writeto_mem(addr, 0xF2, bytes([0x01]))
+        _i2c.writeto_mem(addr, 0xF4, bytes([0x27]))
+        _i2c.writeto_mem(addr, 0xF5, bytes([0xA0]))
+        c = _i2c.readfrom_mem(addr, 0x88, 24)
+        def _u16(o):
+            return c[o] | (c[o + 1] << 8)
+        def _s16(o):
+            v = _u16(o)
+            return v - 65536 if v > 32767 else v
+        _bmp_cal['T1'] = _u16(0); _bmp_cal['T2'] = _s16(2); _bmp_cal['T3'] = _s16(4)
+        _bmp_cal['P1'] = _u16(6); _bmp_cal['P2'] = _s16(8); _bmp_cal['P3'] = _s16(10)
+        _bmp_cal['P4'] = _s16(12); _bmp_cal['P5'] = _s16(14); _bmp_cal['P6'] = _s16(16)
+        _bmp_cal['P7'] = _s16(18); _bmp_cal['P8'] = _s16(20); _bmp_cal['P9'] = _s16(22)
+        if es_bme:
+            h1 = _i2c.readfrom_mem(addr, 0xA1, 1)[0]
+            hc = _i2c.readfrom_mem(addr, 0xE1, 7)
+            h2 = hc[0] | (hc[1] << 8)
+            if h2 > 32767: h2 -= 65536
+            h3 = hc[2]
+            h4 = (hc[3] << 4) | (hc[4] & 0x0F)
+            if h4 > 2047: h4 -= 4096
+            h5 = (hc[5] << 4) | (hc[4] >> 4)
+            if h5 > 2047: h5 -= 4096
+            h6 = hc[6]
+            if h6 > 127: h6 -= 256
+            _bmp_cal['H1'] = h1; _bmp_cal['H2'] = h2; _bmp_cal['H3'] = h3
+            _bmp_cal['H4'] = h4; _bmp_cal['H5'] = h5; _bmp_cal['H6'] = h6
+        _bmp_ready = True
+    d = _i2c.readfrom_mem(addr, 0xF7, 8 if es_bme else 6)
+    praw = (d[0] << 12) | (d[1] << 4) | (d[2] >> 4)
+    traw = (d[3] << 12) | (d[4] << 4) | (d[5] >> 4)
+    cal = _bmp_cal
+    v1 = (traw / 16384.0 - cal['T1'] / 1024.0) * cal['T2']
+    v2 = ((traw / 131072.0 - cal['T1'] / 8192.0) ** 2) * cal['T3']
+    t_fine = v1 + v2
+    temp = t_fine / 5120.0
+    v1p = (t_fine / 2.0) - 64000.0
+    v2p = v1p * v1p * cal['P6'] / 32768.0
+    v2p = v2p + v1p * cal['P5'] * 2.0
+    v2p = (v2p / 4.0) + (cal['P4'] * 65536.0)
+    v1p = (cal['P3'] * v1p * v1p / 524288.0 + cal['P2'] * v1p) / 524288.0
+    v1p = (1.0 + v1p / 32768.0) * cal['P1']
+    if v1p == 0:
+        pressure = 0.0
+    else:
+        pressure = 1048576.0 - praw
+        pressure = (pressure - (v2p / 4096.0)) * 6250.0 / v1p
+        v1p = cal['P9'] * pressure * pressure / 2147483648.0
+        v2p = pressure * cal['P8'] / 32768.0
+        pressure = pressure + (v1p + v2p + cal['P7']) / 16.0
+        pressure = pressure / 100.0
+    if es_bme:
+        hraw = (d[6] << 8) | d[7]
+        h = t_fine - 76800.0
+        h = (hraw - (cal['H4'] * 64.0 + cal['H5'] / 16384.0 * h)) * (cal['H2'] / 65536.0 * (1.0 + cal['H6'] / 67108864.0 * h * (1.0 + cal['H3'] / 67108864.0 * h)))
+        h = h * (1.0 - cal['H1'] * h / 524288.0)
+        if h > 100.0: h = 100.0
+        if h < 0.0: h = 0.0
+        return (temp, pressure, h)
+    return (temp, pressure, None)`;
+      return [`_leer_bmp_bme(${isBme})`, ORDER_ATOMIC];
+    };
+
+    // ---------- GENERADORES PANTALLA OLED 128x64 ----------
+
+    Blockly.Python.forBlock["esp32_oled_init"] = function (block, generator) {
+      generator.definitions_["import_framebuf"] = "import framebuf";
+      generator.definitions_["ssd1306_class"] =
+`class _SSD1306:
+    def __init__(self, i2c, addr=0x3C, w=128, h=64):
+        self.i2c = i2c
+        self.addr = addr
+        self.w = w
+        self.h = h
+        self.buf = bytearray(w * h // 8)
+        self.fb = framebuf.FrameBuffer(self.buf, w, h, framebuf.MONO_VLSB)
+        for c in (0xAE, 0xD5, 0x80, 0xA8, h - 1, 0xD3, 0x00, 0x40, 0x8D, 0x14, 0x20, 0x00, 0xA1, 0xC8, 0xDA, 0x12, 0x81, 0xCF, 0xD9, 0xF1, 0xDB, 0x40, 0xA4, 0xA6, 0xAF):
+            self._cmd(c)
+    def _cmd(self, c):
+        self.i2c.writeto(self.addr, bytes([0x80, c]))
+    def fill(self, c):
+        self.fb.fill(c)
+    def text(self, s, x, y, c=1):
+        self.fb.text(s, x, y, c)
+    def pixel(self, x, y, c=1):
+        self.fb.pixel(x, y, c)
+    def show(self):
+        for page in range(self.h // 8):
+            self._cmd(0xB0 + page)
+            self._cmd(0x00)
+            self._cmd(0x10)
+            self.i2c.writeto(self.addr, bytes([0x40]) + self.buf[self.w * page:self.w * (page + 1)])`;
+      return `_oled = _SSD1306(_i2c)\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_oled_clear"] = function (block, generator) {
+      return `_oled.fill(0)\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_oled_text"] = function (block, generator) {
+      const text = generator.valueToCode(block, "TEXT", ORDER_ATOMIC) || "''";
+      const x = block.getFieldValue("X");
+      const y = block.getFieldValue("Y");
+      return `_oled.text(str(${text}), ${x}, ${y})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_oled_show"] = function (block, generator) {
+      return `_oled.show()\n`;
+    };
+
+    // ---------- GENERADORES SENSORES DE GAS (MQ) ----------
+
+    Blockly.Python.forBlock["esp32_sensor_mq"] = function (block, generator) {
+      generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+      const pin = block.getFieldValue("PIN");
+      return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
     };
 
     // ============================================
