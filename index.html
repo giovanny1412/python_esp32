@@ -104,6 +104,13 @@
       <block type="esp32_sensor_flame"><field name="PIN">19</field></block>
       <block type="esp32_sensor_limit_switch"><field name="PIN">23</field></block>
     </category>
+    <category name="🦾 Servomotores" colour="#f59e0b">
+      <block type="esp32_servo_180"><field name="PIN">13</field><field name="ANGLE">90</field></block>
+      <block type="esp32_servo_360"><field name="PIN">12</field><field name="SPEED">0</field></block>
+    </category>
+    <category name="📏 Distancia" colour="#6366f1">
+      <block type="esp32_ultrasonic"><field name="TRIG">5</field><field name="ECHO">18</field></block>
+    </category>
     <category name="🔀 Lógica" colour="#5b80a5">
       <block type="logic_compare"></block>
       <block type="logic_operation"></block>
@@ -514,6 +521,54 @@
       }
     };
 
+    // ---------- BLOQUES SERVOMOTORES ----------
+
+    Blockly.Blocks["esp32_servo_180"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🦾 Servo 180° pin:")
+          .appendField(new Blockly.FieldNumber(13, 0, 48, 1), "PIN");
+        this.appendValueInput("ANGLE")
+          .appendField("angulo (0-180):")
+          .setCheck("Number");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#f59e0b");
+        this.setTooltip("Controla un servo estandar de 0 a 180 grados.");
+      }
+    };
+
+    Blockly.Blocks["esp32_servo_360"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔄 Servo 360° (continuo) pin:")
+          .appendField(new Blockly.FieldNumber(12, 0, 48, 1), "PIN");
+        this.appendValueInput("SPEED")
+          .appendField("velocidad (-100 a 100):")
+          .setCheck("Number");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#f59e0b");
+        this.setTooltip("-100=gira izquierda rapido, 0=detenido, 100=gira derecha rapido.");
+      }
+    };
+
+    // ---------- BLOQUES ULTRASONICOS ----------
+
+    Blockly.Blocks["esp32_ultrasonic"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📏 Leer ultrasonico HC-SR04  Trig pin:")
+          .appendField(new Blockly.FieldNumber(5, 0, 48, 1), "TRIG");
+        this.appendDummyInput()
+          .appendField("Echo pin:")
+          .appendField(new Blockly.FieldNumber(18, 0, 48, 1), "ECHO");
+        this.setOutput(true, "Number");
+        this.setColour("#6366f1");
+        this.setTooltip("Retorna la distancia en centimetros.");
+      }
+    };
+
     // ============================================
     // GENERADORES DE CODIGO PYTHON
     // ============================================
@@ -725,6 +780,49 @@
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+    };
+
+    // ---------- GENERADORES SERVOMOTORES ----------
+
+    Blockly.Python.forBlock["esp32_servo_180"] = function (block, generator) {
+      generator.definitions_["import_machine_pwm"] = "from machine import PWM, Pin";
+      const pin = block.getFieldValue("PIN");
+      const angle = generator.valueToCode(block, "ANGLE", ORDER_ATOMIC) || '90';
+      generator.definitions_[`servo_${pin}_init`] = `_servo_${pin} = PWM(Pin(${pin}), freq=50)`;
+      return `_servo_${pin}.duty_u16(int(1638 + (${angle} / 180) * 6554))\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_servo_360"] = function (block, generator) {
+      generator.definitions_["import_machine_pwm"] = "from machine import PWM, Pin";
+      const pin = block.getFieldValue("PIN");
+      const speed = generator.valueToCode(block, "SPEED", ORDER_ATOMIC) || '0';
+      generator.definitions_[`servo360_${pin}_init`] = `_servo360_${pin} = PWM(Pin(${pin}), freq=50)`;
+      return `_servo360_${pin}.duty_u16(int(4915 + (${speed} * 16.38)))\n`;
+    };
+
+    // ---------- GENERADORES ULTRASONICOS ----------
+
+    Blockly.Python.forBlock["esp32_ultrasonic"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      generator.definitions_["import_time"] = "import time";
+      const trig = block.getFieldValue("TRIG");
+      const echo = block.getFieldValue("ECHO");
+      generator.definitions_[`ultrasonic_${trig}_${echo}_init`] = `_trig_${trig} = Pin(${trig}, Pin.OUT)\n_echo_${echo} = Pin(${echo}, Pin.IN)`;
+      let code = `def _ultra_${trig}_${echo}():\n`;
+      code += `    _trig_${trig}.value(0)\n`;
+      code += `    time.sleep_us(2)\n`;
+      code += `    _trig_${trig}.value(1)\n`;
+      code += `    time.sleep_us(10)\n`;
+      code += `    _trig_${trig}.value(0)\n`;
+      code += `    while _echo_${echo}.value() == 0:\n`;
+      code += `        pass\n`;
+      code += `    inicio = time.ticks_us()\n`;
+      code += `    while _echo_${echo}.value() == 1:\n`;
+      code += `        pass\n`;
+      code += `    fin = time.ticks_us()\n`;
+      code += `    return (time.ticks_diff(fin, inicio) * 0.0343) / 2\n`;
+      generator.definitions_[`ultrasonic_${trig}_${echo}_func`] = code;
+      return [`_ultra_${trig}_${echo}()`, ORDER_ATOMIC];
     };
 
     // ============================================
