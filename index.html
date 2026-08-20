@@ -165,6 +165,7 @@
       <block type="text_join"></block>
     </category>
     <category name="🧮 Variables" custom="VARIABLE" colour="#a55ba0"></category>
+    <category name="⚙️ Funciones" custom="PROCEDURE" colour="#9a5ba5"></category>
   </xml>
 
   <script>
@@ -1474,6 +1475,11 @@
       Blockly.Python.init(workspace);
       const setupCode = setupBlock ? Blockly.Python.statementToCode(setupBlock, "STACK") : "";
       const loopCode = loopBlock ? Blockly.Python.statementToCode(loopBlock, "STACK") : "";
+      // Los bloques de funciones (procedimientos) quedan sueltos en el area de trabajo,
+      // hay que procesarlos aparte para que su definicion se agregue al codigo generado.
+      topBlocks
+        .filter(b => b.type === "procedures_defnoreturn" || b.type === "procedures_defreturn")
+        .forEach(b => Blockly.Python.blockToCode(b));
       const preamble = Blockly.Python.finish("").trim();
 
       let out = `# Placa objetivo: ${boardName}\n`;
