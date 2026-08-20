@@ -132,6 +132,18 @@
     <category name="💨 Sensores de Gas (MQ)" colour="#84cc16">
       <block type="esp32_sensor_mq"><field name="TYPE">MQ-2</field><field name="PIN">32</field></block>
     </category>
+    <category name="🔧 Motores DC y Pasos" colour="#dc2626">
+      <block type="esp32_motor_dc"><field name="IN1">26</field><field name="IN2">27</field><field name="EN">14</field></block>
+      <block type="esp32_stepper_stepdir"><field name="STEP">25</field><field name="DIR">26</field></block>
+      <block type="esp32_stepper_28byj"><field name="IN1">19</field><field name="IN2">18</field><field name="IN3">5</field><field name="IN4">17</field></block>
+    </category>
+    <category name="💡 NeoPixel" colour="#ec4899">
+      <block type="esp32_neopixel_init"><field name="PIN">4</field><field name="COUNT">8</field></block>
+      <block type="esp32_neopixel_set"><field name="INDEX">0</field></block>
+      <block type="esp32_neopixel_fill"></block>
+      <block type="esp32_neopixel_show"></block>
+      <block type="esp32_neopixel_clear"></block>
+    </category>
     <category name="🔀 Lógica" colour="#5b80a5">
       <block type="logic_compare"></block>
       <block type="logic_operation"></block>
@@ -732,6 +744,126 @@
       }
     };
 
+    // ---------- BLOQUES MOTORES DC Y PASOS ----------
+
+    Blockly.Blocks["esp32_motor_dc"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔧 Motor DC  IN1:")
+          .appendField(new Blockly.FieldNumber(26, 0, 48, 1), "IN1")
+          .appendField("IN2:")
+          .appendField(new Blockly.FieldNumber(27, 0, 48, 1), "IN2")
+          .appendField("EN:")
+          .appendField(new Blockly.FieldNumber(14, 0, 48, 1), "EN");
+        this.appendValueInput("SPEED")
+          .appendField("velocidad (-100 a 100):")
+          .setCheck("Number");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#dc2626");
+        this.setTooltip("Motor DC con puente H (L298N/TB6612/etc). IN1/IN2 controlan el sentido, EN controla la velocidad por PWM. Positivo=adelante, negativo=atras, 0=detenido.");
+      }
+    };
+
+    Blockly.Blocks["esp32_stepper_stepdir"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌀 Motor a pasos (driver STEP/DIR)  STEP:")
+          .appendField(new Blockly.FieldNumber(25, 0, 48, 1), "STEP")
+          .appendField("DIR:")
+          .appendField(new Blockly.FieldNumber(26, 0, 48, 1), "DIR");
+        this.appendValueInput("STEPS").appendField("pasos (+/-):").setCheck("Number");
+        this.appendValueInput("DELAY_US").appendField("retardo entre pasos (us):").setCheck("Number");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#dc2626");
+        this.setTooltip("Para drivers tipo A4988/DRV8825/TB6600. Pasos positivos giran en un sentido, negativos en el otro. Menor retardo = mas velocidad (prueba entre 500 y 2000 us).");
+      }
+    };
+
+    Blockly.Blocks["esp32_stepper_28byj"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌀 Motor a pasos 28BYJ-48 (ULN2003)  IN1:")
+          .appendField(new Blockly.FieldNumber(19, 0, 48, 1), "IN1")
+          .appendField("IN2:")
+          .appendField(new Blockly.FieldNumber(18, 0, 48, 1), "IN2");
+        this.appendDummyInput()
+          .appendField("IN3:")
+          .appendField(new Blockly.FieldNumber(5, 0, 48, 1), "IN3")
+          .appendField("IN4:")
+          .appendField(new Blockly.FieldNumber(17, 0, 48, 1), "IN4");
+        this.appendValueInput("STEPS").appendField("pasos (+/-):").setCheck("Number");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#dc2626");
+        this.setTooltip("Motor paso a paso 28BYJ-48 con placa driver ULN2003. Pasos positivos giran en un sentido, negativos en el otro.");
+      }
+    };
+
+    // ---------- BLOQUES NEOPIXEL ----------
+
+    Blockly.Blocks["esp32_neopixel_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("💡 Inicializar NeoPixel  pin:")
+          .appendField(new Blockly.FieldNumber(4, 0, 48, 1), "PIN")
+          .appendField("cantidad de LEDs:")
+          .appendField(new Blockly.FieldNumber(8, 1, 1000, 1), "COUNT");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+        this.setTooltip("Colocalo en CONFIGURACION antes de usar los demas bloques NeoPixel.");
+      }
+    };
+
+    Blockly.Blocks["esp32_neopixel_set"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🎨 NeoPixel LED numero:")
+          .appendField(new Blockly.FieldNumber(0, 0, 999, 1), "INDEX");
+        this.appendValueInput("R").appendField("R (0-255):").setCheck("Number");
+        this.appendValueInput("G").appendField("G (0-255):").setCheck("Number");
+        this.appendValueInput("B").appendField("B (0-255):").setCheck("Number");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+        this.setTooltip("Asigna un color a un LED especifico (no se ve hasta usar 'NeoPixel mostrar cambios').");
+      }
+    };
+
+    Blockly.Blocks["esp32_neopixel_fill"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🌈 NeoPixel llenar todos con:");
+        this.appendValueInput("R").appendField("R (0-255):").setCheck("Number");
+        this.appendValueInput("G").appendField("G (0-255):").setCheck("Number");
+        this.appendValueInput("B").appendField("B (0-255):").setCheck("Number");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+        this.setTooltip("Asigna el mismo color a todos los LEDs (no se ve hasta usar 'NeoPixel mostrar cambios').");
+      }
+    };
+
+    Blockly.Blocks["esp32_neopixel_show"] = {
+      init: function () {
+        this.appendDummyInput().appendField("✨ NeoPixel mostrar cambios");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+        this.setTooltip("Envia los colores asignados a la tira fisica.");
+      }
+    };
+
+    Blockly.Blocks["esp32_neopixel_clear"] = {
+      init: function () {
+        this.appendDummyInput().appendField("⚫ NeoPixel apagar todos");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+      }
+    };
+
     // ============================================
     // GENERADORES DE CODIGO PYTHON
     // ============================================
@@ -1200,6 +1332,120 @@
       generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
       const pin = block.getFieldValue("PIN");
       return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
+    };
+
+    // ---------- GENERADORES MOTORES DC Y PASOS ----------
+
+    Blockly.Python.forBlock["esp32_motor_dc"] = function (block, generator) {
+      generator.definitions_["import_machine_pwm"] = "from machine import PWM, Pin";
+      generator.definitions_["motor_dc_state"] = "_motor_pwms = {}";
+      generator.definitions_["motor_dc_func"] =
+`def _motor_dc(in1, in2, en, speed):
+    if en not in _motor_pwms:
+        _motor_pwms[en] = PWM(Pin(en), freq=1000)
+    p1 = Pin(in1, Pin.OUT)
+    p2 = Pin(in2, Pin.OUT)
+    pwm = _motor_pwms[en]
+    speed = max(-100, min(100, speed))
+    if speed > 0:
+        p1.value(1)
+        p2.value(0)
+    elif speed < 0:
+        p1.value(0)
+        p2.value(1)
+    else:
+        p1.value(0)
+        p2.value(0)
+    pwm.duty_u16(int(abs(speed) / 100 * 65535))`;
+      const in1 = block.getFieldValue("IN1");
+      const in2 = block.getFieldValue("IN2");
+      const en = block.getFieldValue("EN");
+      const speed = generator.valueToCode(block, "SPEED", ORDER_ATOMIC) || '0';
+      return `_motor_dc(${in1}, ${in2}, ${en}, ${speed})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_stepper_stepdir"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      generator.definitions_["import_time"] = "import time";
+      generator.definitions_["stepper_stepdir_func"] =
+`def _stepper_stepdir(step_pin, dir_pin, pasos, delay_us):
+    step = Pin(step_pin, Pin.OUT)
+    direc = Pin(dir_pin, Pin.OUT)
+    direc.value(1 if pasos >= 0 else 0)
+    for _ in range(abs(pasos)):
+        step.value(1)
+        time.sleep_us(delay_us)
+        step.value(0)
+        time.sleep_us(delay_us)`;
+      const stepPin = block.getFieldValue("STEP");
+      const dirPin = block.getFieldValue("DIR");
+      const steps = generator.valueToCode(block, "STEPS", ORDER_ATOMIC) || '0';
+      const delay = generator.valueToCode(block, "DELAY_US", ORDER_ATOMIC) || '800';
+      return `_stepper_stepdir(${stepPin}, ${dirPin}, ${steps}, ${delay})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_stepper_28byj"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      generator.definitions_["import_time"] = "import time";
+      generator.definitions_["stepper_28byj_state"] = "_stepper28_pins = {}";
+      generator.definitions_["stepper_28byj_func"] =
+`def _stepper_28byj(in1, in2, in3, in4, pasos):
+    key = (in1, in2, in3, in4)
+    if key not in _stepper28_pins:
+        _stepper28_pins[key] = [Pin(in1, Pin.OUT), Pin(in2, Pin.OUT), Pin(in3, Pin.OUT), Pin(in4, Pin.OUT)]
+    pines = _stepper28_pins[key]
+    secuencia = [
+        [1, 0, 0, 0], [1, 1, 0, 0], [0, 1, 0, 0], [0, 1, 1, 0],
+        [0, 0, 1, 0], [0, 0, 1, 1], [0, 0, 0, 1], [1, 0, 0, 1]
+    ]
+    paso_dir = 1 if pasos >= 0 else -1
+    idx = 0
+    for _ in range(abs(pasos)):
+        idx = (idx + paso_dir) % 8
+        fase = secuencia[idx]
+        for i in range(4):
+            pines[i].value(fase[i])
+        time.sleep_ms(2)
+    for p in pines:
+        p.value(0)`;
+      const in1 = block.getFieldValue("IN1");
+      const in2 = block.getFieldValue("IN2");
+      const in3 = block.getFieldValue("IN3");
+      const in4 = block.getFieldValue("IN4");
+      const steps = generator.valueToCode(block, "STEPS", ORDER_ATOMIC) || '0';
+      return `_stepper_28byj(${in1}, ${in2}, ${in3}, ${in4}, ${steps})\n`;
+    };
+
+    // ---------- GENERADORES NEOPIXEL ----------
+
+    Blockly.Python.forBlock["esp32_neopixel_init"] = function (block, generator) {
+      generator.definitions_["import_neopixel"] = "import neopixel\nfrom machine import Pin";
+      const pin = block.getFieldValue("PIN");
+      const count = block.getFieldValue("COUNT");
+      return `_np = neopixel.NeoPixel(Pin(${pin}), ${count})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_neopixel_set"] = function (block, generator) {
+      const index = block.getFieldValue("INDEX");
+      const r = generator.valueToCode(block, "R", ORDER_ATOMIC) || '0';
+      const g = generator.valueToCode(block, "G", ORDER_ATOMIC) || '0';
+      const b = generator.valueToCode(block, "B", ORDER_ATOMIC) || '0';
+      return `_np[${index}] = (${r}, ${g}, ${b})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_neopixel_fill"] = function (block, generator) {
+      const r = generator.valueToCode(block, "R", ORDER_ATOMIC) || '0';
+      const g = generator.valueToCode(block, "G", ORDER_ATOMIC) || '0';
+      const b = generator.valueToCode(block, "B", ORDER_ATOMIC) || '0';
+      return `_np.fill((${r}, ${g}, ${b}))\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_neopixel_show"] = function (block, generator) {
+      return `_np.write()\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_neopixel_clear"] = function (block, generator) {
+      return `_np.fill((0, 0, 0))\n_np.write()\n`;
     };
 
     // ============================================
