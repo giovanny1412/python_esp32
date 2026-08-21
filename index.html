@@ -170,6 +170,36 @@
     </category>
     <category name="🧮 Variables" custom="VARIABLE" colour="#a55ba0"></category>
     <category name="⚙️ Funciones" custom="PROCEDURE" colour="#9a5ba5"></category>
+    <category name="🌐 Servidor Web" colour="#3b82f6">
+      <block type="esp32_web_init"><field name="PORT">80</field></block>
+      <block type="esp32_web_route"><field name="METHOD">GET</field><field name="PATH">/</field></block>
+      <block type="esp32_web_response"></block>
+      <block type="esp32_web_run"></block>
+    </category>
+    <category name="📡 WiFi AP" colour="#8b5cf6">
+      <block type="esp32_wifi_ap"><field name="SSID">ESP32-AP</field><field name="PASS">12345678</field></block>
+    </category>
+    <category name="🌍 HTTP Client" colour="#10b981">
+      <block type="esp32_http_get"><field name="URL">http://api.example.com/datos</field></block>
+      <block type="esp32_http_post"><field name="URL">http://api.example.com/datos</field></block>
+    </category>
+    <category name="📨 MQTT" colour="#f59e0b">
+      <block type="esp32_mqtt_init"><field name="SERVER">broker.hivemq.com</field><field name="PORT">1883</field><field name="CLIENT_ID">esp32_client</field></block>
+      <block type="esp32_mqtt_publish"><field name="TOPIC">casa/sala/temperatura</field></block>
+      <block type="esp32_mqtt_subscribe"><field name="TOPIC">casa/sala/luz</field></block>
+      <block type="esp32_mqtt_check"></block>
+    </category>
+    <category name="🔌 WebSocket" colour="#ec4899">
+      <block type="esp32_websocket_init"><field name="PORT">81</field></block>
+      <block type="esp32_websocket_run"></block>
+      <block type="esp32_websocket_read"></block>
+      <block type="esp32_websocket_send"></block>
+      <block type="esp32_websocket_broadcast"></block>
+    </category>
+    <category name="⏰ Tiempo de Red" colour="#06b6d4">
+      <block type="esp32_ntp_sync"><field name="SERVER">pool.ntp.org</field></block>
+      <block type="esp32_ntp_get_time"></block>
+    </category>
   </xml>
 
   <script>
@@ -1451,6 +1481,782 @@
 
     Blockly.Python.forBlock["esp32_neopixel_clear"] = function (block, generator) {
       return `_np.fill((0, 0, 0))\n_np.write()\n`;
+    };
+
+
+    // ---------- BLOQUES SERVIDOR WEB ----------
+
+    Blockly.Blocks["esp32_web_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌐 Inicializar servidor web puerto:")
+          .appendField(new Blockly.FieldNumber(80, 1, 65535, 1), "PORT");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#3b82f6");
+        this.setTooltip("Crea un servidor HTTP en la ESP32. Colocalo en CONFIGURACION.");
+      }
+    };
+
+    Blockly.Blocks["esp32_web_route"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🛣️ Ruta")
+          .appendField(new Blockly.FieldDropdown([["GET", "GET"], ["POST", "POST"]]), "METHOD")
+          .appendField("URL:")
+          .appendField(new Blockly.FieldTextInput("/"), "PATH");
+        this.appendStatementInput("STACK").appendField("respuesta:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#3b82f6");
+        this.setTooltip("Define una ruta del servidor web. Usa 'Enviar respuesta web' dentro.");
+      }
+    };
+
+    Blockly.Blocks["esp32_web_response"] = {
+      init: function () {
+        this.appendValueInput("CONTENT").appendField("📤 Enviar respuesta web:");
+        this.appendDummyInput()
+          .appendField("tipo:")
+          .appendField(new Blockly.FieldDropdown([["text/html", "text/html"], ["application/json", "application/json"], ["text/plain", "text/plain"]]), "TYPE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#3b82f6");
+        this.setTooltip("Envia una respuesta al navegador. Usalo dentro de una ruta.");
+      }
+    };
+
+    Blockly.Blocks["esp32_web_run"] = {
+      init: function () {
+        this.appendDummyInput().appendField("▶️ Atender peticiones web (no bloqueante)");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#3b82f6");
+        this.setTooltip("Procesa una peticion HTTP pendiente. Colocalo en el BUCLE PRINCIPAL.");
+      }
+    };
+
+    // ---------- BLOQUES WIFI AP ----------
+
+    Blockly.Blocks["esp32_wifi_ap"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📡 Crear red WiFi (AP)  SSID:")
+          .appendField(new Blockly.FieldTextInput("ESP32-AP"), "SSID")
+          .appendField("Clave:")
+          .appendField(new Blockly.FieldTextInput("12345678"), "PASS");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#8b5cf6");
+        this.setTooltip("La ESP32 crea su propia red WiFi. Colocalo en CONFIGURACION.");
+      }
+    };
+
+    // ---------- BLOQUES HTTP CLIENT ----------
+
+    Blockly.Blocks["esp32_http_get"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌍 HTTP GET URL:")
+          .appendField(new Blockly.FieldTextInput("http://api.example.com/datos"), "URL");
+        this.setOutput(true, "String");
+        this.setColour("#10b981");
+        this.setTooltip("Hace una peticion GET y retorna la respuesta como texto.");
+      }
+    };
+
+    Blockly.Blocks["esp32_http_post"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌍 HTTP POST URL:")
+          .appendField(new Blockly.FieldTextInput("http://api.example.com/datos"), "URL");
+        this.appendValueInput("DATA").appendField("datos JSON:");
+        this.setOutput(true, "String");
+        this.setColour("#10b981");
+        this.setTooltip("Hace una peticion POST con datos JSON y retorna la respuesta.");
+      }
+    };
+
+    // ---------- BLOQUES MQTT ----------
+
+    Blockly.Blocks["esp32_mqtt_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📨 Conectar MQTT broker:")
+          .appendField(new Blockly.FieldTextInput("broker.hivemq.com"), "SERVER")
+          .appendField("puerto:")
+          .appendField(new Blockly.FieldNumber(1883, 1, 65535, 1), "PORT");
+        this.appendDummyInput()
+          .appendField("cliente ID:")
+          .appendField(new Blockly.FieldTextInput("esp32_client"), "CLIENT_ID");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#f59e0b");
+        this.setTooltip("Conecta a un broker MQTT. Colocalo en CONFIGURACION.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mqtt_publish"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📤 MQTT publicar en topic:")
+          .appendField(new Blockly.FieldTextInput("casa/sala/temperatura"), "TOPIC");
+        this.appendValueInput("MSG").appendField("mensaje:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#f59e0b");
+        this.setTooltip("Publica un mensaje en un topic MQTT.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mqtt_subscribe"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📥 MQTT suscribirse a topic:")
+          .appendField(new Blockly.FieldTextInput("casa/sala/luz"), "TOPIC");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#f59e0b");
+        this.setTooltip("Se suscribe a un topic para recibir mensajes.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mqtt_check"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📡 MQTT verificar mensajes");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#f59e0b");
+        this.setTooltip("Revisa si llegaron mensajes MQTT. Colocalo en el BUCLE PRINCIPAL.");
+      }
+    };
+
+    // ---------- BLOQUES WEBSOCKET ----------
+
+    Blockly.Blocks["esp32_websocket_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔌 Inicializar WebSocket server puerto:")
+          .appendField(new Blockly.FieldNumber(81, 1, 65535, 1), "PORT");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+        this.setTooltip("Crea un servidor WebSocket para comunicacion en tiempo real. Colocalo en CONFIGURACION.");
+      }
+    };
+
+    Blockly.Blocks["esp32_websocket_send"] = {
+      init: function () {
+        this.appendValueInput("MSG").appendField("🔌 WebSocket enviar a cliente:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+        this.setTooltip("Envia un mensaje al ultimo cliente WebSocket conectado.");
+      }
+    };
+
+    Blockly.Blocks["esp32_websocket_broadcast"] = {
+      init: function () {
+        this.appendValueInput("MSG").appendField("📢 WebSocket broadcast:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+        this.setTooltip("Envia un mensaje a TODOS los clientes WebSocket conectados.");
+      }
+    };
+
+    // ---------- BLOQUES NTP ----------
+
+    Blockly.Blocks["esp32_ntp_sync"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("⏰ Sincronizar hora NTP servidor:")
+          .appendField(new Blockly.FieldTextInput("pool.ntp.org"), "SERVER");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#06b6d4");
+        this.setTooltip("Sincroniza la hora con un servidor NTP. Colocalo en CONFIGURACION.");
+      }
+    };
+
+    Blockly.Blocks["esp32_ntp_get_time"] = {
+      init: function () {
+        this.appendDummyInput().appendField("⏰ Obtener hora actual (ISO)");
+        this.setOutput(true, "String");
+        this.setColour("#06b6d4");
+        this.setTooltip("Retorna la hora actual como texto ISO. Requiere sincronizar NTP primero.");
+      }
+    };
+
+
+    // ---------- GENERADORES SERVIDOR WEB ----------
+
+    Blockly.Python.forBlock["esp32_web_init"] = function (block, generator) {
+      generator.definitions_["import_socket"] = "import socket";
+      generator.definitions_["import_select"] = "import select";
+      const port = block.getFieldValue("PORT");
+      let code = `_web_routes = {}
+`;
+      code += `_web_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+`;
+      code += `_web_sock.bind(('0.0.0.0', ${port}))
+`;
+      code += `_web_sock.listen(5)
+`;
+      code += `_web_sock.setblocking(False)
+`;
+      code += `_web_poll = select.poll()
+`;
+      code += `_web_poll.register(_web_sock, select.POLLIN)
+`;
+      code += `_web_clients = {}
+`;
+      code += `_web_response_buf = {}
+`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_web_route"] = function (block, generator) {
+      const method = block.getFieldValue("METHOD");
+      const path = block.getFieldValue("PATH").replace(/'/g, "\'");
+      const body = generator.statementToCode(block, "STACK");
+      let code = `def _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}(req_path, req_body):
+`;
+      if (body.trim()) {
+        code += body;
+      } else {
+        code += `    pass
+`;
+      }
+      code += `_web_routes[('${method}', '${path}')] = _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}
+`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_web_response"] = function (block, generator) {
+      const content = generator.valueToCode(block, "CONTENT", ORDER_ATOMIC) || "''";
+      const type = block.getFieldValue("TYPE");
+      return `    _web_response_buf['status'] = '200 OK'
+    _web_response_buf['type'] = '${type}'
+    _web_response_buf['body'] = str(${content})
+`;
+    };
+
+    Blockly.Python.forBlock["esp32_web_run"] = function (block, generator) {
+      generator.definitions_["import_time"] = "import time";
+      let code = `events = _web_poll.poll(10)
+`;
+      code += `for sock, evt in events:
+`;
+      code += `    if sock is _web_sock:
+`;
+      code += `        try:
+`;
+      code += `            cl, addr = _web_sock.accept()
+`;
+      code += `            cl.setblocking(False)
+`;
+      code += `            _web_poll.register(cl, select.POLLIN)
+`;
+      code += `            _web_clients[id(cl)] = {'sock': cl, 'buf': b''}
+`;
+      code += `        except:
+`;
+      code += `            pass
+`;
+      code += `    else:
+`;
+      code += `        cid = id(sock)
+`;
+      code += `        if cid in _web_clients:
+`;
+      code += `            try:
+`;
+      code += `                data = sock.recv(1024)
+`;
+      code += `                if data:
+`;
+      code += `                    _web_clients[cid]['buf'] += data
+`;
+      code += `                    if b'\r\n\r\n' in _web_clients[cid]['buf']:
+`;
+      code += `                        req = _web_clients[cid]['buf'].decode('utf-8', 'ignore')
+`;
+      code += `                        lines = req.split('\r\n')
+`;
+      code += `                        if len(lines) > 0:
+`;
+      code += `                            parts = lines[0].split()
+`;
+      code += `                            if len(parts) >= 2:
+`;
+      code += `                                req_method = parts[0]
+`;
+      code += `                                req_path = parts[1]
+`;
+      code += `                                req_body = ''
+`;
+      code += `                                if '\r\n\r\n' in req:
+`;
+      code += `                                    req_body = req.split('\r\n\r\n', 1)[1]
+`;
+      code += `                                _web_response_buf.clear()
+`;
+      code += `                                handler = _web_routes.get((req_method, req_path))
+`;
+      code += `                                if handler:
+`;
+      code += `                                    handler(req_path, req_body)
+`;
+      code += `                                else:
+`;
+      code += `                                    _web_response_buf = {'status': '404 Not Found', 'type': 'text/plain', 'body': 'Not Found'}
+`;
+      code += `                                resp = 'HTTP/1.1 ' + _web_response_buf.get('status', '200 OK') + '\r\n'
+`;
+      code += `                                resp += 'Content-Type: ' + _web_response_buf.get('type', 'text/html') + '\r\n'
+`;
+      code += `                                resp += 'Connection: close\r\n\r\n'
+`;
+      code += `                                resp += _web_response_buf.get('body', '')
+`;
+      code += `                                sock.send(resp.encode())
+`;
+      code += `                        _web_poll.unregister(sock)
+`;
+      code += `                        sock.close()
+`;
+      code += `                        del _web_clients[cid]
+`;
+      code += `                else:
+`;
+      code += `                    _web_poll.unregister(sock)
+`;
+      code += `                    sock.close()
+`;
+      code += `                    del _web_clients[cid]
+`;
+      code += `            except Exception as e:
+`;
+      code += `                try:
+`;
+      code += `                    _web_poll.unregister(sock)
+`;
+      code += `                    sock.close()
+`;
+      code += `                except:
+`;
+      code += `                    pass
+`;
+      code += `                if cid in _web_clients:
+`;
+      code += `                    del _web_clients[cid]
+`;
+      return code;
+    };
+
+    // ---------- GENERADORES WIFI AP ----------
+
+    Blockly.Python.forBlock["esp32_wifi_ap"] = function (block, generator) {
+      generator.definitions_["import_network"] = "import network";
+      const ssid = block.getFieldValue("SSID").replace(/'/g, "\'");
+      const pass_ = block.getFieldValue("PASS").replace(/'/g, "\'");
+      let code = `_ap = network.WLAN(network.AP_IF)
+`;
+      code += `_ap.active(True)
+`;
+      code += `_ap.config(essid='${ssid}', password='${pass_}', authmode=network.AUTH_WPA_WPA2_PSK)
+`;
+      code += `print('AP activo:', _ap.ifconfig())
+`;
+      return code;
+    };
+
+    // ---------- GENERADORES HTTP CLIENT ----------
+
+    Blockly.Python.forBlock["esp32_http_get"] = function (block, generator) {
+      generator.definitions_["import_urequests"] = "import urequests";
+      const url = block.getFieldValue("URL").replace(/'/g, "\'");
+      let code = `try:
+`;
+      code += `    _r = urequests.get('${url}')
+`;
+      code += `    _http_resp = _r.text
+`;
+      code += `    _r.close()
+`;
+      code += `except Exception as _e:
+`;
+      code += `    _http_resp = str(_e)
+`;
+      return [`_http_resp`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_http_post"] = function (block, generator) {
+      generator.definitions_["import_urequests"] = "import urequests";
+      const url = block.getFieldValue("URL").replace(/'/g, "\'");
+      const data = generator.valueToCode(block, "DATA", ORDER_ATOMIC) || "''";
+      let code = `try:
+`;
+      code += `    _r = urequests.post('${url}', data=str(${data}).encode(), headers={'Content-Type': 'application/json'})
+`;
+      code += `    _http_resp = _r.text
+`;
+      code += `    _r.close()
+`;
+      code += `except Exception as _e:
+`;
+      code += `    _http_resp = str(_e)
+`;
+      return [`_http_resp`, ORDER_ATOMIC];
+    };
+
+    // ---------- GENERADORES MQTT ----------
+
+    Blockly.Python.forBlock["esp32_mqtt_init"] = function (block, generator) {
+      generator.definitions_["import_umqtt"] = "from umqtt.simple import MQTTClient";
+      const server = block.getFieldValue("SERVER").replace(/'/g, "\'");
+      const port = block.getFieldValue("PORT");
+      const clientId = block.getFieldValue("CLIENT_ID").replace(/'/g, "\'");
+      let code = `_mqtt_client = MQTTClient('${clientId}', '${server}', ${port})
+`;
+      code += `_mqtt_client.connect()
+`;
+      code += `_mqtt_topics = {}
+`;
+      code += `print('MQTT conectado a ${server}')
+`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_mqtt_publish"] = function (block, generator) {
+      const topic = block.getFieldValue("TOPIC").replace(/'/g, "\'");
+      const msg = generator.valueToCode(block, "MSG", ORDER_ATOMIC) || "''";
+      return `_mqtt_client.publish('${topic}', str(${msg}))
+`;
+    };
+
+    Blockly.Python.forBlock["esp32_mqtt_subscribe"] = function (block, generator) {
+      const topic = block.getFieldValue("TOPIC").replace(/'/g, "\'");
+      let code = `_mqtt_client.subscribe('${topic}')
+`;
+      code += `_mqtt_topics['${topic}'] = None
+`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_mqtt_check"] = function (block, generator) {
+      let code = `try:
+`;
+      code += `    _mqtt_client.check_msg()
+`;
+      code += `except Exception as _e:
+`;
+      code += `    pass
+`;
+      return code;
+    };
+
+    // ---------- GENERADORES WEBSOCKET ----------
+
+    Blockly.Python.forBlock["esp32_websocket_init"] = function (block, generator) {
+      generator.definitions_["import_socket"] = "import socket";
+      generator.definitions_["import_select"] = "import select";
+      generator.definitions_["import_binascii"] = "import binascii";
+      generator.definitions_["import_struct"] = "import struct";
+      generator.definitions_["import_hashlib"] = "import hashlib";
+      const port = block.getFieldValue("PORT");
+      let code = `_ws_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+`;
+      code += `_ws_sock.bind(('0.0.0.0', ${port}))
+`;
+      code += `_ws_sock.listen(5)
+`;
+      code += `_ws_sock.setblocking(False)
+`;
+      code += `_ws_poll = select.poll()
+`;
+      code += `_ws_poll.register(_ws_sock, select.POLLIN)
+`;
+      code += `_ws_clients = {}
+`;
+      code += `def _ws_send_frame(sock, msg):
+`;
+      code += `    data = msg.encode('utf-8')
+`;
+      code += `    length = len(data)
+`;
+      code += `    if length < 126:
+`;
+      code += `        header = struct.pack('!BB', 0x81, length)
+`;
+      code += `    elif length < 65536:
+`;
+      code += `        header = struct.pack('!BBH', 0x81, 126, length)
+`;
+      code += `    else:
+`;
+      code += `        header = struct.pack('!BBQ', 0x81, 127, length)
+`;
+      code += `    sock.send(header + data)
+`;
+      code += `def _ws_parse_frame(sock):
+`;
+      code += `    try:
+`;
+      code += `        header = sock.recv(2)
+`;
+      code += `        if len(header) < 2: return None
+`;
+      code += `        opcode = header[0] & 0x0f
+`;
+      code += `        if opcode == 0x08: return None
+`;
+      code += `        length = header[1] & 0x7f
+`;
+      code += `        if length == 126:
+`;
+      code += `            length = struct.unpack('!H', sock.recv(2))[0]
+`;
+      code += `        elif length == 127:
+`;
+      code += `            length = struct.unpack('!Q', sock.recv(8))[0]
+`;
+      code += `        mask = sock.recv(4)
+`;
+      code += `        data = bytearray(sock.recv(length))
+`;
+      code += `        for i in range(len(data)):
+`;
+      code += `            data[i] ^= mask[i % 4]
+`;
+      code += `        return data.decode('utf-8')
+`;
+      code += `    except:
+`;
+      code += `        return None
+`;
+      code += `def _ws_accept_handshake(sock):
+`;
+      code += `    data = b''
+`;
+      code += `    while b'\r\n\r\n' not in data:
+`;
+      code += `        chunk = sock.recv(1024)
+`;
+      code += `        if not chunk: break
+`;
+      code += `        data += chunk
+`;
+      code += `    req = data.decode('utf-8', 'ignore')
+`;
+      code += `    key = ''
+`;
+      code += `    for line in req.split('\r\n'):
+`;
+      code += `        if line.startswith('Sec-WebSocket-Key:'):
+`;
+      code += `            key = line.split(':')[1].strip()
+`;
+      code += `            break
+`;
+      code += `    if key:
+`;
+      code += `        import ubinascii
+`;
+      code += `        accept = ubinascii.b2a_base64(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).strip().decode()
+`;
+      code += `        resp = 'HTTP/1.1 101 Switching Protocols\r\n'
+`;
+      code += `        resp += 'Upgrade: websocket\r\n'
+`;
+      code += `        resp += 'Connection: Upgrade\r\n'
+`;
+      code += `        resp += 'Sec-WebSocket-Accept: ' + accept + '\r\n\r\n'
+`;
+      code += `        sock.send(resp.encode())
+`;
+      code += `        return True
+`;
+      code += `    return False
+`;
+      code += `_ws_last_client = None
+`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_websocket_send"] = function (block, generator) {
+      const msg = generator.valueToCode(block, "MSG", ORDER_ATOMIC) || "''";
+      return `if _ws_last_client:
+    try:
+        _ws_send_frame(_ws_last_client, str(${msg}))
+    except:
+        pass
+`;
+    };
+
+    Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generator) {
+      const msg = generator.valueToCode(block, "MSG", ORDER_ATOMIC) || "''";
+      let code = `for _ws_cid in list(_ws_clients.keys()):
+`;
+      code += `    try:
+`;
+      code += `        _ws_send_frame(_ws_clients[_ws_cid]['sock'], str(${msg}))
+`;
+      code += `    except Exception as _e:
+`;
+      code += `        try:
+`;
+      code += `            _ws_poll.unregister(_ws_clients[_ws_cid]['sock'])
+`;
+      code += `            _ws_clients[_ws_cid]['sock'].close()
+`;
+      code += `        except:
+`;
+      code += `            pass
+`;
+      code += `        del _ws_clients[_ws_cid]
+`;
+      return code;
+    };
+
+    // ---------- GENERADORES NTP ----------
+
+    Blockly.Python.forBlock["esp32_ntp_sync"] = function (block, generator) {
+      generator.definitions_["import_ntptime"] = "import ntptime";
+      generator.definitions_["import_time"] = "import time";
+      const server = block.getFieldValue("SERVER").replace(/'/g, "\'");
+      let code = `ntptime.host = '${server}'
+`;
+      code += `try:
+`;
+      code += `    ntptime.settime()
+`;
+      code += `    print('Hora sincronizada:', time.localtime())
+`;
+      code += `except Exception as _e:
+`;
+      code += `    print('Error NTP:', _e)
+`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_ntp_get_time"] = function (block, generator) {
+      generator.definitions_["import_time"] = "import time";
+      return [`time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())`, ORDER_ATOMIC];
+    };
+
+
+    Blockly.Blocks["esp32_websocket_run"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🔌 WebSocket atender conexiones (no bloqueante)");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ec4899");
+        this.setTooltip("Acepta y gestiona conexiones WebSocket. Colocalo en el BUCLE PRINCIPAL.");
+      }
+    };
+
+    Blockly.Blocks["esp32_websocket_read"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🔌 WebSocket leer mensaje recibido");
+        this.setOutput(true, "String");
+        this.setColour("#ec4899");
+        this.setTooltip("Retorna el ultimo mensaje WebSocket recibido o None.");
+      }
+    };
+
+
+    Blockly.Python.forBlock["esp32_websocket_run"] = function (block, generator) {
+      let code = `events = _ws_poll.poll(10)
+`;
+      code += `for sock, evt in events:
+`;
+      code += `    if sock is _ws_sock:
+`;
+      code += `        try:
+`;
+      code += `            cl, addr = _ws_sock.accept()
+`;
+      code += `            cl.setblocking(False)
+`;
+      code += `            if _ws_accept_handshake(cl):
+`;
+      code += `                _ws_poll.register(cl, select.POLLIN)
+`;
+      code += `                _ws_clients[id(cl)] = {'sock': cl}
+`;
+      code += `                _ws_last_client = cl
+`;
+      code += `            else:
+`;
+      code += `                cl.close()
+`;
+      code += `        except:
+`;
+      code += `            pass
+`;
+      code += `    else:
+`;
+      code += `        cid = id(sock)
+`;
+      code += `        if cid in _ws_clients:
+`;
+      code += `            msg = _ws_parse_frame(sock)
+`;
+      code += `            if msg is None:
+`;
+      code += `                try:
+`;
+      code += `                    _ws_poll.unregister(sock)
+`;
+      code += `                    sock.close()
+`;
+      code += `                except:
+`;
+      code += `                    pass
+`;
+      code += `                if cid in _ws_clients:
+`;
+      code += `                    del _ws_clients[cid]
+`;
+      code += `            else:
+`;
+      code += `                _ws_clients[cid]['last_msg'] = msg
+`;
+      code += `                _ws_last_client = sock
+`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_websocket_read"] = function (block, generator) {
+      let code = `None
+`;
+      code += `for _ws_cid in list(_ws_clients.keys()):
+`;
+      code += `    if 'last_msg' in _ws_clients[_ws_cid]:
+`;
+      code += `        _ws_msg = _ws_clients[_ws_cid]['last_msg']
+`;
+      code += `        del _ws_clients[_ws_cid]['last_msg']
+`;
+      code += `        break
+`;
+      code += `else:
+`;
+      code += `    _ws_msg = None
+`;
+      // Necesitamos retornar _ws_msg, pero el código anterior es un poco complejo para una expresión
+      // Usaremos un helper
+      generator.definitions_["ws_read_helper"] = `def _ws_read_msg():
+    for cid in list(_ws_clients.keys()):
+        if 'last_msg' in _ws_clients[cid]:
+            msg = _ws_clients[cid]['last_msg']
+            del _ws_clients[cid]['last_msg']
+            return msg
+    return None
+`;
+      return [`_ws_read_msg()`, ORDER_ATOMIC];
     };
 
     // ============================================
