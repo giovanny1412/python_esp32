@@ -26,6 +26,7 @@
     pre { flex: 1; background: #020617; color: #38bdf8; padding: 10px; border-radius: 4px; overflow-y: auto; margin: 0; font-size: 13px; border: 1px solid #1e293b; white-space: pre-wrap; }
     #consoleLog { color: #22c55e; }
   </style>
+<base target="_blank">
 </head>
 <body>
   <header>
@@ -38,6 +39,9 @@
         <option value="ESP32-C6">ESP32-C6</option>
       </select>
       <button id="btnConectar" onclick="conectarPuerto()">🔌 Conectar ESP32</button>
+      <button id="btnDescargar" onclick="descargarBloques()">💾 Descargar Bloques</button>
+      <button id="btnCargar" onclick="document.getElementById('fileInput').click()">📂 Cargar Bloques</button>
+      <input type="file" id="fileInput" accept=".json" style="display:none" onchange="cargarBloques(event)">
       <button id="btnSubir" onclick="subirAMicroPython()">🚀 Subir Código</button>
     </div>
   </header>
@@ -1539,6 +1543,46 @@ function generarCodigoCompleto() {
       const consoleLog = document.getElementById("consoleLog");
       consoleLog.innerText += "\n" + msg;
       consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+
+    // ============================================
+    // DESCARGAR Y CARGAR BLOQUES (JSON)
+    // ============================================
+
+    function descargarBloques() {
+      const estado = Blockly.serialization.workspaces.save(workspace);
+      const jsonStr = JSON.stringify(estado, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "proyecto_esp32.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      log(">> Proyecto descargado como proyecto_esp32.json");
+    }
+
+    function cargarBloques(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const estado = JSON.parse(e.target.result);
+          workspace.clear();
+          Blockly.serialization.workspaces.load(estado, workspace);
+          actualizarVistaPrevia();
+          log(">> Proyecto cargado desde " + file.name);
+        } catch (err) {
+          alert("Error al cargar el archivo: " + err.message);
+          log(">> ERROR cargando proyecto: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = "";
     }
 
     // ============================================
