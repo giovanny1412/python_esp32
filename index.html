@@ -1461,39 +1461,65 @@
       move: { scrollbars: true, drag: true, wheel: false },
       grid: { spacing: 25, length: 3, colour: "#334155", snap: false }
     });
-
+    aqui
     function dedentUnLevel(code) {
-      return code.split("\n").map(line => line.startsWith("    ") ? line.slice(4) : line).join("\n");
-    }
+  // Blockly.statementToCode() agrega 4 espacios a cada linea porque
+  // asume que el codigo va dentro de otro bloque (ej. un 'if' o 'while').
+  // En la seccion de CONFIGURACION no queremos esa indentacion base,
+  // asi que quitamos exactamente esos 4 espacios iniciales.
+  return code.split('\n').map(line => line.replace(/^    /, '')).join('\n');
+}
 
-    function generarCodigoCompleto() {
-      const boardName = document.getElementById("boardSelect").value;
-      const topBlocks = workspace.getTopBlocks(true);
-      const setupBlock = topBlocks.find(b => b.type === "esp32_setup");
-      const loopBlock = topBlocks.find(b => b.type === "esp32_loop");
+function generarCodigoCompleto() {
+  const boardName = document.getElementById("boardSelect").value;
+  const topBlocks = workspace.getTopBlocks(true);
+  const setupBlock = topBlocks.find(b => b.type === "esp32_setup");
+  const loopBlock  = topBlocks.find(b => b.type === "esp32_loop");
 
-      Blockly.Python.init(workspace);
-      const setupCode = setupBlock ? Blockly.Python.statementToCode(setupBlock, "STACK") : "";
-      const loopCode = loopBlock ? Blockly.Python.statementToCode(loopBlock, "STACK") : "";
-      // Los bloques de funciones (procedimientos) quedan sueltos en el area de trabajo,
-      // hay que procesarlos aparte para que su definicion se agregue al codigo generado.
-      topBlocks
-        .filter(b => b.type === "procedures_defnoreturn" || b.type === "procedures_defreturn")
-        .forEach(b => Blockly.Python.blockToCode(b));
-      const preamble = Blockly.Python.finish("").trim();
+  // 1. Limpiar el generador Python para empezar desde cero
+  Blockly.Python.init(workspace);
 
-      let out = `# Placa objetivo: ${boardName}\n`;
-      if (preamble) out += preamble + "\n\n";
-      if (!setupBlock && !loopBlock) {
-        return out + '# Arrastra el bloque "⚙️ CONFIGURACION" y/o "🔁 BUCLE PRINCIPAL" desde la categoria Control para empezar.\n';
-      }
-      if (setupCode.trim()) {
-        out += "# --- Configuracion inicial ---\n" + dedentUnLevel(setupCode) + "\n";
-      }
-      out += "\n# --- Bucle principal ---\nwhile True:\n";
-      out += loopCode.trim() ? loopCode : "    pass\n";
-      return out;
-    }
+  // 2. Procesar PRIMERO los bloques de funciones sueltos (procedimientos)
+  //    del usuario. Esto hace que sus definiciones 'def mi_funcion():'
+  //    se registren en el preamble ANTES que las funciones helper de los
+  //    bloques de sensores/actuadores, quedando el codigo mas ordenado.
+  topBlocks
+    .filter(b => b.type === "procedures_defnoreturn" || b.type === "procedures_defreturn")
+    .forEach(b => Blockly.Python.blockToCode(b));
+
+  // 3. Generar el codigo de los bloques setup y loop. En este punto
+  //    statementToCode() agrega 4 espacios a cada linea porque piensa
+  //    que van dentro de un bloque padre.
+  const setupCode = setupBlock ? Blockly.Python.statementToCode(setupBlock, "STACK") : "";
+  const loopCode  = loopBlock  ? Blockly.Python.statementToCode(loopBlock,  "STACK") : "";
+
+  // 4. Recolectar todo el preamble: imports + funciones helper + clases
+  //    que los bloques fueron acumulando en generator.definitions_
+  const preamble = Blockly.Python.finish("").trim();
+
+  // 5. Ensamblar el archivo final
+  let out = `# Placa objetivo: ${boardName}\n`;
+  if (preamble) out += preamble + "\n\n";
+
+  if (!setupBlock && !loopBlock) {
+    return out + '# Arrastra el bloque "⚙️ CONFIGURACION" y/o "🔁 BUCLE PRINCIPAL" desde la categoria Control para empezar.\n';
+  }
+
+  if (setupCode.trim()) {
+    // dedentUnLevel quita la indentacion fantasma de 4 espacios que
+    // Blockly agrega. El codigo dentro de 'if'/'for'/'def' conserva
+    // su indentacion relativa correcta.
+    out += "# --- Configuracion inicial ---\n" + dedentUnLevel(setupCode).trimEnd() + "\n";
+  }
+
+  out += "\n# --- Bucle principal ---\nwhile True:\n";
+  // El loopCode ya trae sus 4 espacios de indentacion base, que es
+  // exactamente lo que necesitamos para que el codigo quede dentro
+  // del 'while True:'.
+  out += loopCode.trim() ? loopCode : "    pass\n";
+
+  return out;
+}
 
     function actualizarVistaPrevia() {
       try {
