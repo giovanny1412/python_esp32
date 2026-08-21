@@ -1719,7 +1719,11 @@
     Blockly.Python.forBlock["esp32_web_route"] = function (block, generator) {
       const method = block.getFieldValue("METHOD");
       const path = block.getFieldValue("PATH").replace(/'/g, "\'");
-      const body = generator.statementToCode(block, "STACK");
+      let body = generator.statementToCode(block, "STACK");
+      // Agregar 4 espacios extra para la indentacion interna de la funcion
+      if (body.trim()) {
+        body = body.split("\n").map(line => line ? "    " + line : line).join("\n");
+      }
       let code = `def _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}(req_path, req_body):
 `;
       if (body.trim()) {
@@ -2276,7 +2280,11 @@
 function dedentUnLevel(code) {
   return code
     .split("\n")
-    .map(line => line.replace(/^[\s\u00A0]+/, '')) // Elimina TODOS los espacios/tabs iniciales
+    .map(line => {
+      if (line.startsWith("    ")) return line.slice(4);
+      if (line.startsWith("\t")) return line.slice(1);
+      return line;
+    })
     .join("\n");
 }
 
