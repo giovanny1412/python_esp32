@@ -1072,7 +1072,8 @@ Blockly.Python.forBlock["esp32_ble_notify"] = function (block, generator) {
 
 Blockly.Python.forBlock["esp32_ble_read_char"] = function (block, generator) {
   const uuid = block.getFieldValue("UUID");
-  const code = `(_ble.gatts_read(_ble_handles['${uuid}']).decode('utf-8', 'ignore').strip() if '${uuid}' in _ble_handles else '')`;
+  // Se obtiene la cadena cruda decodificada
+  const code = `(_ble.gatts_read(_ble_handles['${uuid}']).decode('utf-8', 'ignore') if '${uuid}' in _ble_handles else '')`;
   return [code, generator.ORDER_ATOMIC];
 };
 
