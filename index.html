@@ -964,10 +964,11 @@
 
     // ---------- GENERADORES BLE ----------
 
-// Definir una referencia segura al generador de Python
+// Asegurar la instancia del generador de Python
 const generator = Blockly.Python || pythonGenerator;
 
-generator.forBlock["esp32_ble_init"] = function (block, generator) {
+// Registros de cada bloque usando forBlock
+Blockly.Python.forBlock["esp32_ble_init"] = function (block, generator) {
   generator.definitions_["import_bluetooth"] = "import bluetooth";
   generator.definitions_["import_time"] = "import time";
   
@@ -998,7 +999,7 @@ generator.forBlock["esp32_ble_init"] = function (block, generator) {
   return code;
 };
 
-Blockly.Python["esp32_ble_advertise"] = function (block, generator) {
+generator.forBlock["esp32_ble_advertise"] = function (block, generator) {
   generator.definitions_["import_bluetooth"] = "import bluetooth";
   generator.definitions_["ble_adv_helper"] =
 `def _parse_uuid(s):
@@ -1041,24 +1042,24 @@ def _ble_build_adv(name, svc_uuid_str=None):
   return code;
 };
 
-Blockly.Python["esp32_ble_create_service"] = function (block, generator) {
+generator.forBlock["esp32_ble_create_service"] = function (block, generator) {
   const uuid = block.getFieldValue("UUID");
   return `_ble_current_svc = '${uuid}'\n_ble_services_list.append(('${uuid}', []))\n`;
 };
 
-Blockly.Python["esp32_ble_create_characteristic"] = function (block, generator) {
+generator.forBlock["esp32_ble_create_characteristic"] = function (block, generator) {
   const uuid = block.getFieldValue("UUID");
   const props = block.getFieldValue("PROPS");
   return `_ble_services_list[-1][1].append(('${uuid}', ${props}))\n`;
 };
 
-Blockly.Python["esp32_ble_write_char"] = function (block, generator) {
+generator.forBlock["esp32_ble_write_char"] = function (block, generator) {
   const uuid = block.getFieldValue("UUID");
   const value = generator.valueToCode(block, "VALUE", generator.ORDER_ATOMIC) || "'0'";
   return `if '${uuid}' in _ble_handles: _ble.gatts_write(_ble_handles['${uuid}'], str(${value}).encode())\n`;
 };
 
-Blockly.Python["esp32_ble_notify"] = function (block, generator) {
+generator.forBlock["esp32_ble_notify"] = function (block, generator) {
   const uuid = block.getFieldValue("UUID");
   const value = generator.valueToCode(block, "VALUE", generator.ORDER_ATOMIC) || "'0'";
   let code = `if '${uuid}' in _ble_handles:\n`;
@@ -1069,15 +1070,18 @@ Blockly.Python["esp32_ble_notify"] = function (block, generator) {
   return code;
 };
 
-Blockly.Python["esp32_ble_read_char"] = function (block, generator) {
+generator.forBlock["esp32_ble_read_char"] = function (block, generator) {
   const uuid = block.getFieldValue("UUID");
-  // Se agrega .strip() para limpiar saltos de línea e imprecisiones al comparar
   const code = `(_ble.gatts_read(_ble_handles['${uuid}']).decode('utf-8', 'ignore').strip() if '${uuid}' in _ble_handles else '')`;
   return [code, generator.ORDER_ATOMIC];
 };
 
-Blockly.Python["esp32_ble_scan"] = function (block, generator) {
+
+
+generator.forBlock["esp32_ble_scan"] = function (block, generator) {
+  generator.definitions_["import_bluetooth"] = "import bluetooth";
   generator.definitions_["import_time"] = "import time";
+  
   let code = `def _ble_irq(event, data):\n`;
   code += `    if event == 1: _ble_connections.add(data[0])\n`;
   code += `    elif event == 2: _ble_connections.discard(data[0])\n`;
@@ -1087,7 +1091,7 @@ Blockly.Python["esp32_ble_scan"] = function (block, generator) {
   return code;
 };
 
-Blockly.Python["esp32_ble_stop_scan"] = function (block, generator) {
+generator.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
   return `_ble.gap_scan(None)\n`;
 };
 
