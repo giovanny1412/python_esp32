@@ -1719,18 +1719,17 @@
     Blockly.Python.forBlock["esp32_web_route"] = function (block, generator) {
       const method = block.getFieldValue("METHOD");
       const path = block.getFieldValue("PATH").replace(/'/g, "\'");
-      const indent = getBlocklyIndent();
       let body = generator.statementToCode(block, "STACK");
-      // Añadir un nivel de indentación para el cuerpo de la función def
+      // Añadir 2 espacios de indentación para el cuerpo de la función def
       if (body.trim()) {
-        body = body.split("\n").map(line => line ? indent + line : line).join("\n");
+        body = body.split("\n").map(line => line ? "  " + line : line).join("\n");
       }
       let code = `def _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}(req_path, req_body):
 `;
       if (body.trim()) {
         code += body;
       } else {
-        code += indent + `pass
+        code += `  pass
 `;
       }
       code += `_web_routes[('${method}', '${path}')] = _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}
@@ -2277,18 +2276,18 @@ _web_response_buf['body'] = str(${content})
       grid: { spacing: 25, length: 3, colour: "#334155", snap: false }
     });
     
-    // 🛠️ Funciones de indentación dinámica:
-function getBlocklyIndent() {
-  // Blockly.Python.INDENT es el prefijo que statementToCode agrega
-  return (Blockly.Python && Blockly.Python.INDENT) ? Blockly.Python.INDENT : "  ";
-}
-
-function dedentBy(code, indent) {
-  if (!indent || indent === "") return code;
-  return code.split("\n").map(line => {
-    if (line.startsWith(indent)) return line.slice(indent.length);
-    return line;
-  }).join("\n");
+    // 🛠️ Función dedentCommon: quita el indent mínimo común de todas las líneas
+function dedentCommon(code) {
+  const lines = code.split("\n");
+  let minIndent = Infinity;
+  for (const line of lines) {
+    if (line.trim() === "") continue;
+    const match = line.match(/^(\s*)/);
+    const indentLen = match ? match[1].length : 0;
+    if (indentLen < minIndent) minIndent = indentLen;
+  }
+  if (minIndent === Infinity || minIndent === 0) return code;
+  return lines.map(line => line.slice(minIndent)).join("\n");
 }
 
 function generarCodigoCompleto() {
@@ -2315,7 +2314,7 @@ function generarCodigoCompleto() {
 
   // Se aplica la limpieza de sangría sobre todo el bloque de configuración inicial
   if (setupCode.trim()) {
-    out += "# --- Configuracion inicial ---\n" + dedentBy(setupCode, indent) + "\n";
+    out += "# --- Configuracion inicial ---\n" + dedentCommon(setupCode) + "\n";
   }
 
   out += "\n# --- Bucle principal ---\nwhile True:\n";
