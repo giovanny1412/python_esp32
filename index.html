@@ -970,8 +970,9 @@
       let code = `_ble = bluetooth.BLE()\n`;
       code += `_ble.active(True)\n`;
       code += `_ble.config(gap_name='${name}')\n`;
-      code += `_ble_services = {}\n`;
-      code += `_ble_chars = {}\n`;
+      code += `_ble_services_list = []\n`;
+      code += `_ble_current_svc = None\n`;
+      code += `_ble_handles = {}\n`;
       code += `_ble_connections = set()\n`;
       code += `def _ble_irq(event, data):\n`;
       code += `    if event == 1: _ble_connections.add(data[0])\n`;
@@ -981,46 +982,61 @@
     };
 
     Blockly.Python.forBlock["esp32_ble_advertise"] = function (block, generator) {
-      return `_ble.gap_advertise(100000, adv_data=b'\\x02\\x01\\x06\\x03\\x03\\x1a\\x18')\n`;
+      let code = `if _ble_services_list:\n`;
+      code += `    _registered = _ble.gatts_register_services([\n`;
+      code += `        (bluetooth.UUID(svc), [(bluetooth.UUID(c), p) for c, p in chars])\n`;
+      code += `        for svc, chars in _ble_services_list\n`;
+      code += `    ])\n`;
+      code += `    for svc_idx, (svc_uuid, chars) in enumerate(_ble_services_list):\n`;
+      code += `        for char_idx, (char_uuid, _) in enumerate(chars):\n`;
+      code += `            _ble_handles[char_uuid] = _registered[svc_idx][char_idx]\n`;
+      code += `    _svc_uuid_val = int(_ble_services_list[0][0], 16)\n`;
+      code += `    _adv_data = bytes([0x02, 0x01, 0x06, 0x03, 0x03, _svc_uuid_val & 0xFF, (_svc_uuid_val >> 8) & 0xFF])\n`;
+      code += `    _ble.gap_advertise(100000, adv_data=_adv_data)\n`;
+      code += `else:\n`;
+      code += `    _ble.gap_advertise(100000)\n`;
+      return code;
     };
 
     Blockly.Python.forBlock["esp32_ble_create_service"] = function (block, generator) {
       const uuid = block.getFieldValue("UUID");
-      return `_ble_services['${uuid}'] = bluetooth.UUID(${uuid})\n`;
+      return `_ble_current_svc = '${uuid}'\n_ble_services_list.append(('${uuid}', []))\n`;
     };
 
     Blockly.Python.forBlock["esp32_ble_create_characteristic"] = function (block, generator) {
       const uuid = block.getFieldValue("UUID");
       const props = block.getFieldValue("PROPS");
-      return `_ble_chars['${uuid}'] = (bluetooth.UUID(${uuid}), ${props})\n`;
+      return `_ble_services_list[-1][1].append(('${uuid}', ${props}))\n`;
     };
 
     Blockly.Python.forBlock["esp32_ble_write_char"] = function (block, generator) {
       const uuid = block.getFieldValue("UUID");
       const value = generator.valueToCode(block, "VALUE", ORDER_ATOMIC) || '0';
-      return `_ble.gatts_write(_ble_chars['${uuid}'][0], str(${value}).encode())\n`;
+      return `_ble.gatts_write(_ble_handles['${uuid}'], str(${value}).encode())\n`;
     };
 
     Blockly.Python.forBlock["esp32_ble_notify"] = function (block, generator) {
       const uuid = block.getFieldValue("UUID");
       const value = generator.valueToCode(block, "VALUE", ORDER_ATOMIC) || '0';
       let code = `val_bytes = str(${value}).encode()\n`;
-      code += `_ble.gatts_write(_ble_chars['${uuid}'][0], val_bytes)\n`;
+      code += `_ble.gatts_write(_ble_handles['${uuid}'], val_bytes)\n`;
       code += `for conn_handle in _ble_connections:\n`;
-      code += `    _ble.gatts_notify(conn_handle, _ble_chars['${uuid}'][0], val_bytes)\n`;
+      code += `    _ble.gatts_notify(conn_handle, _ble_handles['${uuid}'], val_bytes)\n`;
       return code;
     };
 
     Blockly.Python.forBlock["esp32_ble_read_char"] = function (block, generator) {
       const uuid = block.getFieldValue("UUID");
-      return [`_ble.gatts_read(_ble_chars['${uuid}'][0]).decode()`, ORDER_ATOMIC];
+      return [`_ble.gatts_read(_ble_handles['${uuid}']).decode()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_ble_scan"] = function (block, generator) {
       generator.definitions_["import_time"] = "import time";
-      let code = `def _scan_cb(event, data):\n`;
-      code += `    if event == 5: print('BLE encontrado:', data[1], 'RSSI:', data[3])\n`;
-      code += `_ble.irq(_scan_cb)\n`;
+      let code = `def _ble_irq(event, data):\n`;
+      code += `    if event == 1: _ble_connections.add(data[0])\n`;
+      code += `    elif event == 2: _ble_connections.discard(data[0])\n`;
+      code += `    elif event == 5: print('BLE encontrado:', data[1], 'RSSI:', data[3])\n`;
+      code += `_ble.irq(_ble_irq)\n`;
       code += `_ble.gap_scan(5000, 30000, 30000)\n`;
       return code;
     };
