@@ -42,6 +42,7 @@
       <button id="btnDescargar" onclick="descargarBloques()">💾 Descargar Bloques</button>
       <button id="btnCargar" onclick="document.getElementById('fileInput').click()">📂 Cargar Bloques</button>
       <input type="file" id="fileInput" accept=".json" style="display:none" onchange="cargarBloques(event)">
+      <button id="btnEjemploLED" onclick="cargarEjemploLED()">💡 Ejemplo LED</button>
       <button id="btnSubir" onclick="subirAMicroPython()">🚀 Subir Código</button>
     </div>
   </header>
@@ -1719,17 +1720,18 @@
     Blockly.Python.forBlock["esp32_web_route"] = function (block, generator) {
       const method = block.getFieldValue("METHOD");
       const path = block.getFieldValue("PATH").replace(/'/g, "\'");
+      const indent = Blockly.Python.INDENT || "    ";
       let body = generator.statementToCode(block, "STACK");
-      // Añadir 2 espacios de indentación para el cuerpo de la función def
+      // Añadir un nivel de indentación para el cuerpo de la función def
       if (body.trim()) {
-        body = body.split("\n").map(line => line ? "  " + line : line).join("\n");
+        body = body.split("\n").map(line => line ? indent + line : line).join("\n");
       }
       let code = `def _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}(req_path, req_body):
 `;
       if (body.trim()) {
         code += body;
       } else {
-        code += `  pass
+        code += indent + `pass
 `;
       }
       code += `_web_routes[('${method}', '${path}')] = _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}
@@ -1782,11 +1784,11 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `                    _web_clients[cid]['buf'] += data
 `;
-      code += `                    if b'\\r\\n\\r\\n' in _web_clients[cid]['buf']:
+      code += `                    if b'\r\n\r\n' in _web_clients[cid]['buf']:
 `;
       code += `                        req = _web_clients[cid]['buf'].decode('utf-8', 'ignore')
 `;
-      code += `                        lines = req.split('\\r\\n')
+      code += `                        lines = req.split('\r\n')
 `;
       code += `                        if len(lines) > 0:
 `;
@@ -1800,9 +1802,9 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `                                req_body = ''
 `;
-      code += `                                if '\\r\\n\\r\\n' in req:
+      code += `                                if '\r\n\r\n' in req:
 `;
-      code += `                                    req_body = req.split('\\r\\n\\r\\n', 1)[1]
+      code += `                                    req_body = req.split('\r\n\r\n', 1)[1]
 `;
       code += `                                _web_response_buf.clear()
 `;
@@ -1816,11 +1818,11 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `                                    _web_response_buf = {'status': '404 Not Found', 'type': 'text/plain', 'body': 'Not Found'}
 `;
-      code += `                                resp = 'HTTP/1.1 ' + _web_response_buf.get('status', '200 OK') + '\\r\\n'
+      code += `                                resp = 'HTTP/1.1 ' + _web_response_buf.get('status', '200 OK') + '\r\n'
 `;
-      code += `                                resp += 'Content-Type: ' + _web_response_buf.get('type', 'text/html') + '\\r\\n'
+      code += `                                resp += 'Content-Type: ' + _web_response_buf.get('type', 'text/html') + '\r\n'
 `;
-      code += `                                resp += 'Connection: close\\r\\n\\r\\n'
+      code += `                                resp += 'Connection: close\r\n\r\n'
 `;
       code += `                                resp += _web_response_buf.get('body', '')
 `;
@@ -2044,7 +2046,7 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `    data = b''
 `;
-      code += `    while b'\\r\\n\\r\\n' not in data:
+      code += `    while b'\r\n\r\n' not in data:
 `;
       code += `        chunk = sock.recv(1024)
 `;
@@ -2056,7 +2058,7 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `    key = ''
 `;
-      code += `    for line in req.split('\\r\\n'):
+      code += `    for line in req.split('\r\n'):
 `;
       code += `        if line.startswith('Sec-WebSocket-Key:'):
 `;
@@ -2070,13 +2072,13 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `        accept = ubinascii.b2a_base64(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).strip().decode()
 `;
-      code += `        resp = 'HTTP/1.1 101 Switching Protocols\\r\\n'
+      code += `        resp = 'HTTP/1.1 101 Switching Protocols\r\n'
 `;
-      code += `        resp += 'Upgrade: websocket\\r\\n'
+      code += `        resp += 'Upgrade: websocket\r\n'
 `;
-      code += `        resp += 'Connection: Upgrade\\r\\n'
+      code += `        resp += 'Connection: Upgrade\r\n'
 `;
-      code += `        resp += 'Sec-WebSocket-Accept: ' + accept + '\\r\\n\\r\\n'
+      code += `        resp += 'Sec-WebSocket-Accept: ' + accept + '\r\n\r\n'
 `;
       code += `        sock.send(resp.encode())
 `;
@@ -2275,7 +2277,10 @@ _web_response_buf['body'] = str(${content})
       move: { scrollbars: true, drag: true, wheel: false },
       grid: { spacing: 25, length: 3, colour: "#334155", snap: false }
     });
+     // Configurar indentación Python a 4 espacios (estándar PEP 8)
+    Blockly.Python.INDENT = "    ";
     
+       
     // 🛠️ Función dedentCommon: quita el indent mínimo común de todas las líneas
 function dedentCommon(code) {
   const lines = code.split("\n");
@@ -2399,6 +2404,107 @@ function generarCodigoCompleto() {
       };
       reader.readAsText(file);
       event.target.value = "";
+    }
+
+    function cargarEjemploLED() {
+      const ejemplo = {
+        "blocks": {
+          "languageVersion": 0,
+          "blocks": [
+            {
+              "type": "esp32_setup",
+              "x": 40,
+              "y": 40,
+              "inputs": {
+                "STACK": {
+                  "block": {
+                    "type": "esp32_web_init",
+                    "fields": { "PORT": 80 },
+                    "next": {
+                      "block": {
+                        "type": "esp32_wifi_ap",
+                        "fields": { "SSID": "ESP32-AP", "PASS": "12345678" },
+                        "next": {
+                          "block": {
+                            "type": "esp32_web_route",
+                            "fields": { "METHOD": "GET", "PATH": "/led/on" },
+                            "inputs": {
+                              "STACK": {
+                                "block": {
+                                  "type": "esp32_digital_write",
+                                  "fields": { "PIN": 2, "STATE": "1" },
+                                  "next": {
+                                    "block": {
+                                      "type": "esp32_web_response",
+                                      "fields": { "TYPE": "text/html" },
+                                      "inputs": {
+                                        "CONTENT": {
+                                          "block": {
+                                            "type": "text",
+                                            "fields": { "TEXT": "<h1>LED ENCENDIDO</h1>" }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "esp32_web_route",
+                                "fields": { "METHOD": "GET", "PATH": "/led/off" },
+                                "inputs": {
+                                  "STACK": {
+                                    "block": {
+                                      "type": "esp32_digital_write",
+                                      "fields": { "PIN": 2, "STATE": "0" },
+                                      "next": {
+                                        "block": {
+                                          "type": "esp32_web_response",
+                                          "fields": { "TYPE": "text/html" },
+                                          "inputs": {
+                                            "CONTENT": {
+                                              "block": {
+                                                "type": "text",
+                                                "fields": { "TEXT": "<h1>LED APAGADO</h1>" }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "esp32_loop",
+              "x": 40,
+              "y": 400,
+              "inputs": {
+                "STACK": {
+                  "block": {
+                    "type": "esp32_web_run"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      };
+      workspace.clear();
+      Blockly.serialization.workspaces.load(ejemplo, workspace);
+      actualizarVistaPrevia();
+      log(">> Ejemplo LED cargado: Visita http://192.168.4.1/led/on o /led/off");
     }
 
     // ============================================
