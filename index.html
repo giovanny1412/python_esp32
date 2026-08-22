@@ -964,7 +964,10 @@
 
     // ---------- GENERADORES BLE ----------
 
-Blockly.Python["esp32_ble_init"] = function (block, generator) {
+// Definir una referencia segura al generador de Python
+const generator = Blockly.Python || pythonGenerator;
+
+generator.forBlock["esp32_ble_init"] = function (block, generator) {
   generator.definitions_["import_bluetooth"] = "import bluetooth";
   generator.definitions_["import_time"] = "import time";
   
@@ -982,13 +985,13 @@ Blockly.Python["esp32_ble_init"] = function (block, generator) {
   code += `_adv_data = None\n`;
   code += `def _ble_irq(event, data):\n`;
   code += `    global _adv_data\n`;
-  code += `    if event == 1:\n`; // _IRQ_CENTRAL_CONNECT
+  code += `    if event == 1:\n`;
   code += `        _ble_connections.add(data[0])\n`;
-  code += `        try: _ble.gap_advertise(None)\n`; // Detener publicidad para evitar GATT 147
+  code += `        try: _ble.gap_advertise(None)\n`;
   code += `        except: pass\n`;
-  code += `    elif event == 2:\n`; // _IRQ_CENTRAL_DISCONNECT
+  code += `    elif event == 2:\n`;
   code += `        _ble_connections.discard(data[0])\n`;
-  code += `        if _adv_data:\n`; // Reanudar publicidad al desconectarse
+  code += `        if _adv_data:\n`;
   code += `            try: _ble.gap_advertise(100000, adv_data=_adv_data, connectable=True)\n`;
   code += `            except: pass\n`;
   code += `_ble.irq(_ble_irq)\n`;
