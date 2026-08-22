@@ -1782,11 +1782,11 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `                    _web_clients[cid]['buf'] += data
 `;
-      code += `                    if b'\\n\\n' in _web_clients[cid]['buf']:
+      code += `                    if b'\\r\\n\\r\\n' in _web_clients[cid]['buf']:
 `;
       code += `                        req = _web_clients[cid]['buf'].decode('utf-8', 'ignore')
 `;
-      code += `                        lines = req.split('\\n')
+      code += `                        lines = req.split('\\r\\n')
 `;
       code += `                        if len(lines) > 0:
 `;
@@ -1800,9 +1800,9 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `                                req_body = ''
 `;
-      code += `                                if '\\n\\n' in req:
+      code += `                                if '\\r\\n\\r\\n' in req:
 `;
-      code += `                                    req_body = req.split('\\n\\n', 1)[1]
+      code += `                                    req_body = req.split('\\r\\n\\r\\n', 1)[1]
 `;
       code += `                                _web_response_buf.clear()
 `;
@@ -1816,11 +1816,11 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `                                    _web_response_buf = {'status': '404 Not Found', 'type': 'text/plain', 'body': 'Not Found'}
 `;
-      code += `                                resp = 'HTTP/1.1 ' + _web_response_buf.get('status', '200 OK') + '\\n'
+      code += `                                resp = 'HTTP/1.1 ' + _web_response_buf.get('status', '200 OK') + '\\r\\n'
 `;
-      code += `                                resp += 'Content-Type: ' + _web_response_buf.get('type', 'text/html') + '\\n'
+      code += `                                resp += 'Content-Type: ' + _web_response_buf.get('type', 'text/html') + '\\r\\n'
 `;
-      code += `                                resp += 'Connection: close\\n\\n'
+      code += `                                resp += 'Connection: close\\r\\n\\r\\n'
 `;
       code += `                                resp += _web_response_buf.get('body', '')
 `;
@@ -2044,7 +2044,7 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `    data = b''
 `;
-      code += `    while b'\\n\\n' not in data:
+      code += `    while b'\\r\\n\\r\\n' not in data:
 `;
       code += `        chunk = sock.recv(1024)
 `;
@@ -2056,7 +2056,7 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `    key = ''
 `;
-      code += `    for line in req.split('\\n'):
+      code += `    for line in req.split('\\r\\n'):
 `;
       code += `        if line.startswith('Sec-WebSocket-Key:'):
 `;
@@ -2070,13 +2070,13 @@ _web_response_buf['body'] = str(${content})
 `;
       code += `        accept = ubinascii.b2a_base64(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).strip().decode()
 `;
-      code += `        resp = 'HTTP/1.1 101 Switching Protocols\\n'
+      code += `        resp = 'HTTP/1.1 101 Switching Protocols\\r\\n'
 `;
-      code += `        resp += 'Upgrade: websocket\\n'
+      code += `        resp += 'Upgrade: websocket\\r\\n'
 `;
-      code += `        resp += 'Connection: Upgrade\\n'
+      code += `        resp += 'Connection: Upgrade\\r\\n'
 `;
-      code += `        resp += 'Sec-WebSocket-Accept: ' + accept + '\\n\\n'
+      code += `        resp += 'Sec-WebSocket-Accept: ' + accept + '\\r\\n\\r\\n'
 `;
       code += `        sock.send(resp.encode())
 `;
