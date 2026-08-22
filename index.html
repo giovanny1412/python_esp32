@@ -2443,6 +2443,31 @@ function generarCodigoCompleto() {
     // CONEXION Y ENVIO VIA WEB SERIAL
     // ============================================
 
+    let serialReader = null;
+
+    function appendSerialRaw(text) {
+      const consoleLog = document.getElementById("consoleLog");
+      consoleLog.innerText += text;
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    async function leerSerialContinuo() {
+      const textDecoder = new TextDecoderStream();
+      port.readable.pipeTo(textDecoder.writable).catch(() => {});
+      serialReader = textDecoder.readable.getReader();
+      try {
+        while (true) {
+          const { value, done } = await serialReader.read();
+          if (done) break;
+          if (value) appendSerialRaw(value);
+        }
+      } catch (err) {
+        log(">> Lectura serie detenida: " + err.message);
+      } finally {
+        try { serialReader.releaseLock(); } catch (e) {}
+      }
+    }
+
     async function conectarPuerto() {
       if (!("serial" in navigator)) {
         alert("Este navegador no soporta Web Serial. Usa Chrome o Edge en computadora.");
@@ -2456,6 +2481,7 @@ function generarCodigoCompleto() {
         writer = textEncoder.writable.getWriter();
         log(">> Conectado exitosamente al puerto serie.");
         document.getElementById("btnConectar").innerText = "🟢 Conectado";
+        leerSerialContinuo();
       } catch (err) {
         log(">> ERROR al conectar: " + err.message);
       }
