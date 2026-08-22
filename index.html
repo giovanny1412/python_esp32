@@ -986,12 +986,18 @@
 
     Blockly.Python.forBlock["esp32_ble_advertise"] = function (block, generator) {
       generator.definitions_["ble_adv_helper"] =
-`def _ble_build_adv(name, svc_uuid_str=None):
+`def _parse_uuid(s):
+    if isinstance(s, str) and s.lower().startswith('0x'):
+        return int(s, 16)
+    return s
+
+
+def _ble_build_adv(name, svc_uuid_str=None):
     payload = bytearray()
     payload += bytes([2, 0x01, 0x06])
     if svc_uuid_str:
         try:
-            u = bluetooth.UUID(int(svc_uuid_str, 16) if svc_uuid_str.startswith('0x') else svc_uuid_str)
+            u = bluetooth.UUID(_parse_uuid(svc_uuid_str))
             b = bytes(u)
             ad_type = 0x07 if len(b) == 16 else (0x03 if len(b) == 2 else 0x05)
             payload += bytes([len(b) + 1, ad_type]) + b
@@ -1003,7 +1009,7 @@
     return bytes(payload)`;
       let code = `if _ble_services_list:\n`;
       code += `    _registered = _ble.gatts_register_services([\n`;
-      code += `        (bluetooth.UUID(svc), [(bluetooth.UUID(c), p) for c, p in chars])\n`;
+      code += `        (bluetooth.UUID(_parse_uuid(svc)), [(bluetooth.UUID(_parse_uuid(c)), p) for c, p in chars])\n`;
       code += `        for svc, chars in _ble_services_list\n`;
       code += `    ])\n`;
       code += `    for svc_idx, (svc_uuid, chars) in enumerate(_ble_services_list):\n`;
