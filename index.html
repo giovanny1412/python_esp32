@@ -2277,7 +2277,7 @@ _web_response_buf['body'] = str(${content})
       grid: { spacing: 25, length: 3, colour: "#334155", snap: false }
     });
     
-    // 🛠️ Función dedentUnLevel corregida y robusta:
+    // 🛠️ Funciones de indentación dinámica:
 function getBlocklyIndent() {
   // Blockly.Python.INDENT es el prefijo que statementToCode agrega
   return (Blockly.Python && Blockly.Python.INDENT) ? Blockly.Python.INDENT : "  ";
@@ -2315,7 +2315,7 @@ function generarCodigoCompleto() {
 
   // Se aplica la limpieza de sangría sobre todo el bloque de configuración inicial
   if (setupCode.trim()) {
-    out += "# --- Configuracion inicial ---\n" + dedentUnLevel(setupCode) + "\n";
+    out += "# --- Configuracion inicial ---\n" + dedentBy(setupCode, indent) + "\n";
   }
 
   out += "\n# --- Bucle principal ---\nwhile True:\n";
