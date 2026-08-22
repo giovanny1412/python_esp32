@@ -966,10 +966,13 @@
 
     Blockly.Python.forBlock["esp32_ble_init"] = function (block, generator) {
       generator.definitions_["import_bluetooth"] = "import bluetooth";
+      generator.definitions_["import_time"] = "import time";
       const name = block.getFieldValue("NAME").replace(/'/g, "\\'");
       let code = `_ble = bluetooth.BLE()\n`;
       code += `_ble.active(True)\n`;
+      code += `time.sleep_ms(200)\n`;
       code += `_ble.config(gap_name='${name}')\n`;
+      code += `_ble_name = '${name}'\n`;
       code += `_ble_services_list = []\n`;
       code += `_ble_current_svc = None\n`;
       code += `_ble_handles = {}\n`;
@@ -982,6 +985,22 @@
     };
 
     Blockly.Python.forBlock["esp32_ble_advertise"] = function (block, generator) {
+      generator.definitions_["ble_adv_helper"] =
+`def _ble_build_adv(name, svc_uuid_str=None):
+    payload = bytearray()
+    payload += bytes([2, 0x01, 0x06])
+    if svc_uuid_str:
+        try:
+            u = bluetooth.UUID(int(svc_uuid_str, 16) if svc_uuid_str.startswith('0x') else svc_uuid_str)
+            b = bytes(u)
+            ad_type = 0x07 if len(b) == 16 else (0x03 if len(b) == 2 else 0x05)
+            payload += bytes([len(b) + 1, ad_type]) + b
+        except Exception:
+            pass
+    name_bytes = name.encode()
+    if name_bytes:
+        payload += bytes([len(name_bytes) + 1, 0x09]) + name_bytes
+    return bytes(payload)`;
       let code = `if _ble_services_list:\n`;
       code += `    _registered = _ble.gatts_register_services([\n`;
       code += `        (bluetooth.UUID(svc), [(bluetooth.UUID(c), p) for c, p in chars])\n`;
@@ -990,11 +1009,14 @@
       code += `    for svc_idx, (svc_uuid, chars) in enumerate(_ble_services_list):\n`;
       code += `        for char_idx, (char_uuid, _) in enumerate(chars):\n`;
       code += `            _ble_handles[char_uuid] = _registered[svc_idx][char_idx]\n`;
-      code += `    _svc_uuid_val = int(_ble_services_list[0][0], 16)\n`;
-      code += `    _adv_data = bytes([0x02, 0x01, 0x06, 0x03, 0x03, _svc_uuid_val & 0xFF, (_svc_uuid_val >> 8) & 0xFF])\n`;
-      code += `    _ble.gap_advertise(100000, adv_data=_adv_data)\n`;
+      code += `    _adv_data = _ble_build_adv(_ble_name, _ble_services_list[0][0])\n`;
       code += `else:\n`;
-      code += `    _ble.gap_advertise(100000)\n`;
+      code += `    _adv_data = _ble_build_adv(_ble_name)\n`;
+      code += `try:\n`;
+      code += `    _ble.gap_advertise(100000, adv_data=_adv_data, connectable=True)\n`;
+      code += `    print('BLE anunciandose como', _ble_name)\n`;
+      code += `except Exception as _e:\n`;
+      code += `    print('Error al iniciar advertising BLE:', _e)\n`;
       return code;
     };
 
