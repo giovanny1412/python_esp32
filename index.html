@@ -1814,18 +1814,25 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       return [`_leer_hmc5883l()[2]`, ORDER_ATOMIC];
     };
 
-    Blockly.Python.forBlock["esp32_hmc5883l_heading"] = function (block, generator) {
-      _hmc5883lSetup(generator);
-      generator.definitions_["import_math"] = "import math";
-      generator.definitions_["hmc5883l_heading_func"] =
+Blockly.Python.forBlock["esp32_hmc5883l_heading"] = function (block, generator) {
+  _hmc5883lSetup(generator);
+  generator.definitions_["import_math"] = "import math";
+  
+  // Función con try/except para prevenir bloqueos por fallas de conexión I2C
+  generator.definitions_["hmc5883l_heading_func"] =
 `def _leer_hmc5883l_heading():
-    x, y, z = _leer_hmc5883l()
-    h = math.atan2(y, x) * 180.0 / math.pi
-    if h < 0:
-        h += 360.0
-    return h`;
-      return [`_leer_hmc5883l_heading()`, ORDER_ATOMIC];
-    };
+    try:
+        x, y, z = _leer_hmc5883l()
+        h = math.atan2(y, x) * 180.0 / math.pi
+        if h < 0:
+            h += 360.0
+        return round(h, 2)
+    except Exception:
+        return 0.0`;
+
+  // Uso de generator.ORDER_ATOMIC
+  return [`_leer_hmc5883l_heading()`, generator.ORDER_ATOMIC];
+};
 
     Blockly.Python.forBlock["esp32_vl53l0x_near"] = function (block, generator) {
       generator.definitions_["vl53l0x_state"] = "_vl53 = None";
@@ -2655,166 +2662,120 @@ _web_response_buf['body'] = str(${content})
 
     // ---------- GENERADORES WEBSOCKET ----------
 
-    Blockly.Python.forBlock["esp32_websocket_init"] = function (block, generator) {
-      generator.definitions_["import_socket"] = "import socket";
-      generator.definitions_["import_select"] = "import select";
-      generator.definitions_["import_binascii"] = "import binascii";
-      generator.definitions_["import_struct"] = "import struct";
-      generator.definitions_["import_hashlib"] = "import hashlib";
-      const port = block.getFieldValue("PORT");
-      let code = `_ws_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-`;
-      code += `_ws_sock.bind(('0.0.0.0', ${port}))
-`;
-      code += `_ws_sock.listen(5)
-`;
-      code += `_ws_sock.setblocking(False)
-`;
-      code += `_ws_poll = select.poll()
-`;
-      code += `_ws_poll.register(_ws_sock, select.POLLIN)
-`;
-      code += `_ws_clients = {}
-`;
-      code += `def _ws_send_frame(sock, msg):
-`;
-      code += `    data = msg.encode('utf-8')
-`;
-      code += `    length = len(data)
-`;
-      code += `    if length < 126:
-`;
-      code += `        header = struct.pack('!BB', 0x81, length)
-`;
-      code += `    elif length < 65536:
-`;
-      code += `        header = struct.pack('!BBH', 0x81, 126, length)
-`;
-      code += `    else:
-`;
-      code += `        header = struct.pack('!BBQ', 0x81, 127, length)
-`;
-      code += `    sock.send(header + data)
-`;
-      code += `def _ws_parse_frame(sock):
-`;
-      code += `    try:
-`;
-      code += `        header = sock.recv(2)
-`;
-      code += `        if len(header) < 2: return None
-`;
-      code += `        opcode = header[0] & 0x0f
-`;
-      code += `        if opcode == 0x08: return None
-`;
-      code += `        length = header[1] & 0x7f
-`;
-      code += `        if length == 126:
-`;
-      code += `            length = struct.unpack('!H', sock.recv(2))[0]
-`;
-      code += `        elif length == 127:
-`;
-      code += `            length = struct.unpack('!Q', sock.recv(8))[0]
-`;
-      code += `        mask = sock.recv(4)
-`;
-      code += `        data = bytearray(sock.recv(length))
-`;
-      code += `        for i in range(len(data)):
-`;
-      code += `            data[i] ^= mask[i % 4]
-`;
-      code += `        return data.decode('utf-8')
-`;
-      code += `    except:
-`;
-      code += `        return None
-`;
-      code += `def _ws_accept_handshake(sock):
-`;
-      code += `    data = b''
-`;
-      code += `    while b'\\r\\n\\r\\n' not in data:
-`;
-      code += `        chunk = sock.recv(1024)
-`;
-      code += `        if not chunk: break
-`;
-      code += `        data += chunk
-`;
-      code += `    req = data.decode('utf-8', 'ignore')
-`;
-      code += `    key = ''
-`;
-      code += `    for line in req.split('\\r\\n'):
-`;
-      code += `        if line.startswith('Sec-WebSocket-Key:'):
-`;
-      code += `            key = line.split(':')[1].strip()
-`;
-      code += `            break
-`;
-      code += `    if key:
-`;
-      code += `        import ubinascii
-`;
-      code += `        accept = ubinascii.b2a_base64(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).strip().decode()
-`;
-      code += `        resp = 'HTTP/1.1 101 Switching Protocols\\r\\n'
-`;
-      code += `        resp += 'Upgrade: websocket\\r\\n'
-`;
-      code += `        resp += 'Connection: Upgrade\\r\\n'
-`;
-      code += `        resp += 'Sec-WebSocket-Accept: ' + accept + '\\r\\n\\r\\n'
-`;
-      code += `        sock.send(resp.encode())
-`;
-      code += `        return True
-`;
-      code += `    return False
-`;
-      code += `_ws_last_client = None
-`;
-      return code;
-    };
+Blockly.Python.forBlock["esp32_websocket_init"] = function (block, generator) {
+  generator.definitions_["import_socket"] = "import socket";
+  generator.definitions_["import_select"] = "import select";
+  generator.definitions_["import_struct"] = "import struct";
+  generator.definitions_["import_hashlib"] = "import hashlib";
+  generator.definitions_["import_ubinascii"] = "import ubinascii";
 
-    Blockly.Python.forBlock["esp32_websocket_send"] = function (block, generator) {
-      const msg = generator.valueToCode(block, "MSG", ORDER_ATOMIC) || "''";
-      return `if _ws_last_client:
-    try:
-        _ws_send_frame(_ws_last_client, str(${msg}))
-    except:
-        pass
-`;
-    };
+  const port = block.getFieldValue("PORT") || 81;
 
-    Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generator) {
-      const msg = generator.valueToCode(block, "MSG", ORDER_ATOMIC) || "''";
-      let code = `for _ws_cid in list(_ws_clients.keys()):
-`;
-      code += `    try:
-`;
-      code += `        _ws_send_frame(_ws_clients[_ws_cid]['sock'], str(${msg}))
-`;
-      code += `    except Exception as _e:
-`;
-      code += `        try:
-`;
-      code += `            _ws_poll.unregister(_ws_clients[_ws_cid]['sock'])
-`;
-      code += `            _ws_clients[_ws_cid]['sock'].close()
-`;
-      code += `        except:
-`;
-      code += `            pass
-`;
-      code += `        del _ws_clients[_ws_cid]
-`;
-      return code;
-    };
+  let code = `_ws_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n`;
+  code += `_ws_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n`; // Corrección 1
+  code += `_ws_sock.bind(('0.0.0.0', ${port}))\n`;
+  code += `_ws_sock.listen(5)\n`;
+  code += `_ws_sock.setblocking(False)\n`;
+  code += `_ws_poll = select.poll()\n`;
+  code += `_ws_poll.register(_ws_sock, select.POLLIN)\n`;
+  code += `_ws_clients = {}\n`;
+
+  code += `def _ws_send_frame(sock, msg):\n`;
+  code += `    data = msg.encode('utf-8')\n`;
+  code += `    length = len(data)\n`;
+  code += `    if length < 126:\n`;
+  code += `        header = struct.pack('!BB', 0x81, length)\n`;
+  code += `    elif length < 65536:\n`;
+  code += `        header = struct.pack('!BBH', 0x81, 126, length)\n`;
+  code += `    else:\n`;
+  code += `        header = struct.pack('!BBQ', 0x81, 127, length)\n`;
+  code += `    sock.send(header + data)\n\n`;
+
+  code += `def _ws_recv_exact(sock, length):\n`; // Corrección 3
+  code += `    buf = bytearray()\n`;
+  code += `    while len(buf) < length:\n`;
+  code += `        chunk = sock.recv(length - len(buf))\n`;
+  code += `        if not chunk: return None\n`;
+  code += `        buf.extend(chunk)\n`;
+  code += `    return buf\n\n`;
+
+  code += `def _ws_parse_frame(sock):\n`;
+  code += `    try:\n`;
+  code += `        header = _ws_recv_exact(sock, 2)\n`;
+  code += `        if not header: return None\n`;
+  code += `        opcode = header[0] & 0x0f\n`;
+  code += `        if opcode == 0x08: return None\n`;
+  code += `        length = header[1] & 0x7f\n`;
+  code += `        if length == 126:\n`;
+  code += `            raw_len = _ws_recv_exact(sock, 2)\n`;
+  code += `            if not raw_len: return None\n`;
+  code += `            length = struct.unpack('!H', raw_len)[0]\n`;
+  code += `        elif length == 127:\n`;
+  code += `            raw_len = _ws_recv_exact(sock, 8)\n`;
+  code += `            if not raw_len: return None\n`;
+  code += `            length = struct.unpack('!Q', raw_len)[0]\n`;
+  code += `        mask = _ws_recv_exact(sock, 4)\n`;
+  code += `        if not mask: return None\n`;
+  code += `        data = _ws_recv_exact(sock, length)\n`;
+  code += `        if data is None: return None\n`;
+  code += `        for i in range(len(data)):\n`;
+  code += `            data[i] ^= mask[i % 4]\n`;
+  code += `        return data.decode('utf-8')\n`;
+  code += `    except:\n`;
+  code += `        return None\n\n`;
+
+  code += `def _ws_accept_handshake(sock):\n`;
+  code += `    data = b''\n`;
+  code += `    while b'\\r\\n\\r\\n' not in data:\n`;
+  code += `        chunk = sock.recv(1024)\n`;
+  code += `        if not chunk: break\n`;
+  code += `        data += chunk\n`;
+  code += `    req = data.decode('utf-8', 'ignore')\n`;
+  code += `    key = ''\n`;
+  code += `    for line in req.split('\\r\\n'):\n`;
+  code += `        if line.startswith('Sec-WebSocket-Key:'):\n`;
+  code += `            key = line.split(':')[1].strip()\n`;
+  code += `            break\n`;
+  code += `    if key:\n`;
+  code += `        accept = ubinascii.b2a_base64(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).strip().decode()\n`;
+  code += `        resp = 'HTTP/1.1 101 Switching Protocols\\r\\n'\n`;
+  code += `        resp += 'Upgrade: websocket\\r\\n'\n`;
+  code += `        resp += 'Connection: Upgrade\\r\\n'\n`;
+  code += `        resp += 'Sec-WebSocket-Accept: ' + accept + '\\r\\n\\r\\n'\n`;
+  code += `        sock.send(resp.encode())\n`;
+  code += `        return True\n`;
+  code += `    return False\n\n`;
+
+  code += `_ws_last_client = None\n`;
+  return code;
+};
+
+Blockly.Python.forBlock["esp32_websocket_send"] = function (block, generator) {
+  const msg = generator.valueToCode(block, "MSG", generator.ORDER_ATOMIC) || "''";
+  
+  // Corrección 2: Sangría arreglada
+  let code = `if _ws_last_client:\n`;
+  code += `    try:\n`;
+  code += `        _ws_send_frame(_ws_last_client, str(${msg}))\n`;
+  code += `    except:\n`;
+  code += `        pass\n`;
+  return code;
+};
+
+Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generator) {
+  const msg = generator.valueToCode(block, "MSG", generator.ORDER_ATOMIC) || "''";
+  let code = `for _ws_cid in list(_ws_clients.keys()):\n`;
+  code += `    try:\n`;
+  code += `        _ws_send_frame(_ws_clients[_ws_cid]['sock'], str(${msg}))\n`;
+  code += `    except Exception:\n`;
+  code += `        try:\n`;
+  code += `            _ws_poll.unregister(_ws_clients[_ws_cid]['sock'])\n`;
+  code += `            _ws_clients[_ws_cid]['sock'].close()\n`;
+  code += `        except:\n`;
+  code += `            pass\n`;
+  code += `        del _ws_clients[_ws_cid]\n`;
+  return code;
+};
 
     // ---------- GENERADORES NTP ----------
 
