@@ -116,6 +116,11 @@
     <category name="📏 Distancia" colour="#6366f1">
       <block type="esp32_ultrasonic"><field name="TRIG">5</field><field name="ECHO">18</field></block>
     </category>
+    <category name="📡 Sensor Infrarrojo (IR)" colour="#f97316">
+      <block type="esp32_ir_init"><field name="PIN">15</field></block>
+      <block type="esp32_ir_has_signal"></block>
+      <block type="esp32_ir_read_code"></block>
+    </category>
     <category name="🔗 I2C" colour="#0891b2">
       <block type="esp32_i2c_init"><field name="SDA">21</field><field name="SCL">22</field></block>
     </category>
@@ -135,6 +140,11 @@
       <block type="esp32_tcs34725_green"></block>
       <block type="esp32_tcs34725_blue"></block>
       <block type="esp32_tcs34725_clear"></block>
+      <block type="esp32_hmc5883l_read"></block>
+      <block type="esp32_hmc5883l_x"></block>
+      <block type="esp32_hmc5883l_y"></block>
+      <block type="esp32_hmc5883l_z"></block>
+      <block type="esp32_hmc5883l_heading"></block>
     </category>
     <category name="🌦️ Clima y Ambiente" colour="#06b6d4">
       <block type="esp32_dht_read"><field name="TYPE">DHT22</field><field name="PIN">4</field></block>
@@ -565,6 +575,38 @@
       }
     };
 
+    // ---------- BLOQUES SENSOR INFRARROJO (IR) ----------
+
+    Blockly.Blocks["esp32_ir_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📡 Inicializar receptor infrarrojo (IR) pin:")
+          .appendField(new Blockly.FieldNumber(15, 0, 48, 1), "PIN");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#f97316");
+        this.setTooltip("Colocalo en CONFIGURACION. Modulo receptor IR tipo KY-022 (VS1838B/TL1838). Conecta la pata de señal (S) al pin indicado.");
+      }
+    };
+
+    Blockly.Blocks["esp32_ir_has_signal"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📡 ¿Se recibio una señal IR?");
+        this.setOutput(true, "Boolean");
+        this.setColour("#f97316");
+        this.setTooltip("Requiere el receptor IR inicializado. Retorna True si llego un nuevo codigo desde el ultimo control remoto detectado (protocolo NEC).");
+      }
+    };
+
+    Blockly.Blocks["esp32_ir_read_code"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📡 Leer codigo IR recibido");
+        this.setOutput(true, "Number");
+        this.setColour("#f97316");
+        this.setTooltip("Requiere el receptor IR inicializado. Retorna el ultimo codigo NEC de 32 bits recibido (0 si no hay ninguno todavia).");
+      }
+    };
+
     Blockly.Blocks["esp32_sensor_sound_digital"] = {
       init: function () {
         this.appendDummyInput()
@@ -824,6 +866,53 @@
         this.setOutput(true, "Number");
         this.setColour("#7c3aed");
         this.setTooltip("Requiere el bus I2C inicializado. Retorna solo el canal de claridad/luz (0-65535).");
+      }
+    };
+
+    // ---------- BLOQUES HMC5883L (BRUJULA/MAGNETOMETRO) ----------
+
+    Blockly.Blocks["esp32_hmc5883l_read"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧲 Leer HMC5883L (magnetometro)");
+        this.setOutput(true, null);
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna tupla (x, y, z) con las lecturas crudas del campo magnetico.");
+      }
+    };
+
+    Blockly.Blocks["esp32_hmc5883l_x"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧲 Campo magnetico X (HMC5883L)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo el eje X del campo magnetico.");
+      }
+    };
+
+    Blockly.Blocks["esp32_hmc5883l_y"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧲 Campo magnetico Y (HMC5883L)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo el eje Y del campo magnetico.");
+      }
+    };
+
+    Blockly.Blocks["esp32_hmc5883l_z"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧲 Campo magnetico Z (HMC5883L)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo el eje Z del campo magnetico.");
+      }
+    };
+
+    Blockly.Blocks["esp32_hmc5883l_heading"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧭 Rumbo/orientacion en grados (HMC5883L)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna el rumbo tipo brujula de 0 a 360 grados (0=Norte magnetico).");
       }
     };
 
@@ -1390,6 +1479,84 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
     };
 
+    // ---------- GENERADORES SENSOR INFRARROJO (IR) ----------
+
+    function _irSetup(generator) {
+      generator.definitions_["import_time"] = "import time";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      generator.definitions_["ir_state"] = "_ir_pin = None\n_ir_times = []\n_ir_last_code = None\n_ir_new = False";
+      generator.definitions_["ir_irq_func"] =
+`def _ir_irq(pin):
+    global _ir_times
+    _ir_times.append(time.ticks_us())
+    if len(_ir_times) > 140:
+        _ir_times.pop(0)`;
+      generator.definitions_["ir_init_func"] =
+`def _ir_init(pin_num):
+    global _ir_pin
+    _ir_pin = Pin(pin_num, Pin.IN, Pin.PULL_UP)
+    _ir_pin.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=_ir_irq)`;
+      generator.definitions_["ir_poll_func"] =
+`def _ir_poll():
+    global _ir_times, _ir_last_code, _ir_new
+    times = _ir_times
+    if len(times) < 4:
+        return
+    now = time.ticks_us()
+    if time.ticks_diff(now, times[-1]) < 10000:
+        return
+    seq = times[:]
+    _ir_times.clear()
+    diffs = []
+    for i in range(1, len(seq)):
+        diffs.append(time.ticks_diff(seq[i], seq[i - 1]))
+    header_idx = None
+    for i in range(len(diffs) - 1):
+        if 8000 < diffs[i] < 10000 and 4000 < diffs[i + 1] < 5000:
+            header_idx = i
+            break
+    if header_idx is None:
+        return
+    bits = []
+    idx = header_idx + 2
+    while idx + 1 < len(diffs) and len(bits) < 32:
+        bits.append(1 if diffs[idx + 1] > 1000 else 0)
+        idx += 2
+    if len(bits) < 32:
+        return
+    code = 0
+    for b in bits:
+        code = (code << 1) | b
+    _ir_last_code = code
+    _ir_new = True`;
+      generator.definitions_["ir_has_signal_func"] =
+`def _ir_has_signal():
+    _ir_poll()
+    return _ir_new`;
+      generator.definitions_["ir_read_code_func"] =
+`def _ir_read_code():
+    global _ir_new
+    _ir_poll()
+    _ir_new = False
+    return _ir_last_code if _ir_last_code is not None else 0`;
+    }
+
+    Blockly.Python.forBlock["esp32_ir_init"] = function (block, generator) {
+      _irSetup(generator);
+      const pin = block.getFieldValue("PIN");
+      return `_ir_init(${pin})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_ir_has_signal"] = function (block, generator) {
+      _irSetup(generator);
+      return [`_ir_has_signal()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_ir_read_code"] = function (block, generator) {
+      _irSetup(generator);
+      return [`_ir_read_code()`, ORDER_ATOMIC];
+    };
+
     Blockly.Python.forBlock["esp32_sensor_sound_digital"] = function (block, generator) {
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
@@ -1602,6 +1769,62 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
     Blockly.Python.forBlock["esp32_tcs34725_clear"] = function (block, generator) {
       _tcs34725Setup(generator);
       return [`_leer_tcs34725()[3]`, ORDER_ATOMIC];
+    };
+
+    const HMC5883L_FUNC_DEF =
+`def _leer_hmc5883l():
+    global _hmc_ready
+    addr = 0x1E
+    if not _hmc_ready:
+        _i2c.writeto_mem(addr, 0x00, bytes([0x70]))
+        _i2c.writeto_mem(addr, 0x01, bytes([0x20]))
+        _i2c.writeto_mem(addr, 0x02, bytes([0x00]))
+        _hmc_ready = True
+    d = _i2c.readfrom_mem(addr, 0x03, 6)
+    def _s16(h, l):
+        v = (h << 8) | l
+        return v - 65536 if v > 32767 else v
+    x = _s16(d[0], d[1])
+    z = _s16(d[2], d[3])
+    y = _s16(d[4], d[5])
+    return (x, y, z)`;
+
+    function _hmc5883lSetup(generator) {
+      generator.definitions_["hmc5883l_state"] = "_hmc_ready = False";
+      generator.definitions_["hmc5883l_func"] = HMC5883L_FUNC_DEF;
+    }
+
+    Blockly.Python.forBlock["esp32_hmc5883l_read"] = function (block, generator) {
+      _hmc5883lSetup(generator);
+      return [`_leer_hmc5883l()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_hmc5883l_x"] = function (block, generator) {
+      _hmc5883lSetup(generator);
+      return [`_leer_hmc5883l()[0]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_hmc5883l_y"] = function (block, generator) {
+      _hmc5883lSetup(generator);
+      return [`_leer_hmc5883l()[1]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_hmc5883l_z"] = function (block, generator) {
+      _hmc5883lSetup(generator);
+      return [`_leer_hmc5883l()[2]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_hmc5883l_heading"] = function (block, generator) {
+      _hmc5883lSetup(generator);
+      generator.definitions_["import_math"] = "import math";
+      generator.definitions_["hmc5883l_heading_func"] =
+`def _leer_hmc5883l_heading():
+    x, y, z = _leer_hmc5883l()
+    h = math.atan2(y, x) * 180.0 / math.pi
+    if h < 0:
+        h += 360.0
+    return h`;
+      return [`_leer_hmc5883l_heading()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_vl53l0x_near"] = function (block, generator) {
