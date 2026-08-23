@@ -28,6 +28,7 @@
   </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
   <header>
@@ -201,6 +202,12 @@
       <block type="math_arithmetic"></block>
       <block type="math_random_int"><value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value><value name="TO"><shadow type="math_number"><field name="NUM">100</field></shadow></value></block>
       <block type="math_map"><field name="IN_MIN">0</field><field name="IN_MAX">65535</field><field name="OUT_MIN">0</field><field name="OUT_MAX">100</field></block>
+      <block type="math_to_hex"></block>
+      <block type="math_from_hex"><field name="VALUE">FF</field></block>
+      <block type="math_to_bin"></block>
+      <block type="math_from_bin"><field name="VALUE">1010</field></block>
+      <block type="math_to_oct"></block>
+      <block type="math_from_oct"><field name="VALUE">77</field></block>
     </category>
     <category name="🔤 Texto" colour="#a55b80">
       <block type="text"></block>
@@ -565,6 +572,66 @@
         this.setOutput(true, "Number");
         this.setColour("#5b67a5");
         this.setTooltip("Mapea un valor de un rango a otro.");
+      }
+    };
+
+    Blockly.Blocks["math_to_hex"] = {
+      init: function () {
+        this.appendValueInput("NUM").appendField("🔢 Convertir a HEX").setCheck("Number");
+        this.setOutput(true, "String");
+        this.setColour("#5b67a5");
+        this.setTooltip("Convierte un numero entero a cadena hexadecimal (ej: 255 -> '0xFF').");
+      }
+    };
+
+    Blockly.Blocks["math_from_hex"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔢 HEX a numero  valor:")
+          .appendField(new Blockly.FieldTextInput("FF"), "VALUE");
+        this.setOutput(true, "Number");
+        this.setColour("#5b67a5");
+        this.setTooltip("Convierte una cadena hexadecimal a numero entero (ej: 'FF' -> 255).");
+      }
+    };
+
+    Blockly.Blocks["math_to_bin"] = {
+      init: function () {
+        this.appendValueInput("NUM").appendField("🔢 Convertir a BIN").setCheck("Number");
+        this.setOutput(true, "String");
+        this.setColour("#5b67a5");
+        this.setTooltip("Convierte un numero entero a cadena binaria (ej: 10 -> '0b1010').");
+      }
+    };
+
+    Blockly.Blocks["math_from_bin"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔢 BIN a numero  valor:")
+          .appendField(new Blockly.FieldTextInput("1010"), "VALUE");
+        this.setOutput(true, "Number");
+        this.setColour("#5b67a5");
+        this.setTooltip("Convierte una cadena binaria a numero entero (ej: '1010' -> 10).");
+      }
+    };
+
+    Blockly.Blocks["math_to_oct"] = {
+      init: function () {
+        this.appendValueInput("NUM").appendField("🔢 Convertir a OCT").setCheck("Number");
+        this.setOutput(true, "String");
+        this.setColour("#5b67a5");
+        this.setTooltip("Convierte un numero entero a cadena octal (ej: 8 -> '0o10').");
+      }
+    };
+
+    Blockly.Blocks["math_from_oct"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔢 OCT a numero  valor:")
+          .appendField(new Blockly.FieldTextInput("77"), "VALUE");
+        this.setOutput(true, "Number");
+        this.setColour("#5b67a5");
+        this.setTooltip("Convierte una cadena octal a numero entero (ej: '77' -> 63).");
       }
     };
 
@@ -1523,6 +1590,36 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       const outMax = block.getFieldValue("OUT_MAX");
       generator.definitions_["math_map_func"] = `def _map(x, in_min, in_max, out_min, out_max):\n    return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)\n`;
       return [`_map(${value}, ${inMin}, ${inMax}, ${outMin}, ${outMax})`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["math_to_hex"] = function (block, generator) {
+      const num = generator.valueToCode(block, "NUM", ORDER_ATOMIC) || '0';
+      return [`hex(int(${num}))`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["math_from_hex"] = function (block, generator) {
+      const value = block.getFieldValue("VALUE").replace(/'/g, "\'");
+      return [`int('${value}', 16)`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["math_to_bin"] = function (block, generator) {
+      const num = generator.valueToCode(block, "NUM", ORDER_ATOMIC) || '0';
+      return [`bin(int(${num}))`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["math_from_bin"] = function (block, generator) {
+      const value = block.getFieldValue("VALUE").replace(/'/g, "\'");
+      return [`int('${value}', 2)`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["math_to_oct"] = function (block, generator) {
+      const num = generator.valueToCode(block, "NUM", ORDER_ATOMIC) || '0';
+      return [`oct(int(${num}))`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["math_from_oct"] = function (block, generator) {
+      const value = block.getFieldValue("VALUE").replace(/'/g, "\'");
+      return [`int('${value}', 8)`, ORDER_ATOMIC];
     };
 
     // ---------- GENERADORES SENSORES DIGITALES ----------
