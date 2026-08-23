@@ -309,20 +309,25 @@
       }
     };
 
-    Blockly.Blocks["esp32_pwm_write"] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("PWM en pin")
-          .appendField(new Blockly.FieldNumber(5, 0, 48, 1), "PIN")
-          .appendField("frecuencia (Hz)")
-          .appendField(new Blockly.FieldNumber(1000, 1, 40000000, 1), "FREQ")
-          .appendField("duty (0-65535)")
-          .appendField(new Blockly.FieldNumber(32768, 0, 65535, 1), "DUTY");
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour("#8B5CA8");
-      }
-    };
+Blockly.Blocks["esp32_pwm_write"] = {
+  init: function () {
+    this.appendDummyInput()
+      .appendField("PWM en pin")
+      .appendField(new Blockly.FieldNumber(5, 0, 48, 1), "PIN")
+      .appendField("frecuencia (Hz)")
+      .appendField(new Blockly.FieldNumber(1000, 1, 40000000, 1), "FREQ");
+    
+    // Cambiado a ValueInput para aceptar variables y bloques de entrada
+    this.appendValueInput("DUTY")
+      .setCheck("Number")
+      .appendField("duty (0-65535)");
+
+    this.setInputsInline(true); // Mantiene todos los campos en una sola línea horizontal
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour("#8B5CA8");
+  }
+};
 
     Blockly.Blocks["esp32_delay"] = {
       init: function () {
@@ -1371,13 +1376,18 @@
       return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
     };
 
-    Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
-      generator.definitions_["import_machine_pwm"] = "from machine import PWM, Pin";
-      const pin = block.getFieldValue("PIN");
-      const freq = block.getFieldValue("FREQ");
-      const duty = block.getFieldValue("DUTY");
-      return `PWM(Pin(${pin}), freq=${freq}, duty_u16=${duty})\n`;
-    };
+Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
+  var pin = block.getFieldValue("PIN");
+  var freq = block.getFieldValue("FREQ");
+  
+  // Lee la variable o bloque conectado, o usa 0 por defecto si está vacío
+  var duty = generator.valueToCode(block, "DUTY", generator.ORDER_ATOMIC) || "0";
+
+  generator.definitions_["import_pin"] = "from machine import Pin, PWM";
+  generator.definitions_[`pwm_init_${pin}`] = `_pwm_${pin} = PWM(Pin(${pin}), freq=${freq})`;
+
+  return `_pwm_${pin}.duty_u16(int(${duty}))\n`;
+};
 
     Blockly.Python.forBlock["esp32_delay"] = function (block, generator) {
       generator.definitions_["import_time"] = "import time";
