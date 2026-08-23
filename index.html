@@ -27,6 +27,7 @@
     #consoleLog { color: #22c55e; }
   </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
   <header>
@@ -145,6 +146,11 @@
       <block type="esp32_hmc5883l_y"></block>
       <block type="esp32_hmc5883l_z"></block>
       <block type="esp32_hmc5883l_heading"></block>
+      <block type="esp32_ha5883_read"></block>
+      <block type="esp32_ha5883_x"></block>
+      <block type="esp32_ha5883_y"></block>
+      <block type="esp32_ha5883_z"></block>
+      <block type="esp32_ha5883_heading"></block>
     </category>
     <category name="🌦️ Clima y Ambiente" colour="#06b6d4">
       <block type="esp32_dht_read"><field name="TYPE">DHT22</field><field name="PIN">4</field></block>
@@ -916,7 +922,55 @@
       }
     };
 
-    // ---------- BLOQUES CLIMA Y AMBIENTE ----------
+    
+    // ---------- BLOQUES HA5883 (CLON QMC5883, DIR 0x0D) ----------
+
+    Blockly.Blocks["esp32_ha5883_read"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧲 Leer HA5883 (clon QMC5883)");
+        this.setOutput(true, null);
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Direccion 0x0D. Retorna tupla (x, y, z) con las lecturas crudas del campo magnetico.");
+      }
+    };
+
+    Blockly.Blocks["esp32_ha5883_x"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧲 Campo magnetico X (HA5883)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Direccion 0x0D. Retorna solo el eje X del campo magnetico.");
+      }
+    };
+
+    Blockly.Blocks["esp32_ha5883_y"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧲 Campo magnetico Y (HA5883)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Direccion 0x0D. Retorna solo el eje Y del campo magnetico.");
+      }
+    };
+
+    Blockly.Blocks["esp32_ha5883_z"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧲 Campo magnetico Z (HA5883)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Direccion 0x0D. Retorna solo el eje Z del campo magnetico.");
+      }
+    };
+
+    Blockly.Blocks["esp32_ha5883_heading"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧭 Rumbo/orientacion en grados (HA5883)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Direccion 0x0D. Retorna el rumbo tipo brujula de 0 a 360 grados (0=Norte magnetico).");
+      }
+    };
+
+// ---------- BLOQUES CLIMA Y AMBIENTE ----------
 
     Blockly.Blocks["esp32_dht_read"] = {
       init: function () {
@@ -2777,7 +2831,70 @@ Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generato
   return code;
 };
 
-    // ---------- GENERADORES NTP ----------
+    
+    // ---------- GENERADORES HA5883 (CLON QMC5883, DIR 0x0D) ----------
+
+    const HA5883_FUNC_DEF =
+`def _leer_ha5883():
+    global _ha_ready
+    addr = 0x0D
+    if not _ha_ready:
+        _i2c.writeto_mem(addr, 0x0B, bytes([0x01]))
+        _i2c.writeto_mem(addr, 0x09, bytes([0x0D]))
+        _ha_ready = True
+        time.sleep_ms(10)
+    d = _i2c.readfrom_mem(addr, 0x00, 6)
+    def _s16(l, h):
+        v = (h << 8) | l
+        return v - 65536 if v > 32767 else v
+    x = _s16(d[0], d[1])
+    y = _s16(d[2], d[3])
+    z = _s16(d[4], d[5])
+    return (x, y, z)`;
+
+    function _ha5883Setup(generator) {
+      generator.definitions_["import_time"] = "import time";
+      generator.definitions_["ha5883_state"] = "_ha_ready = False";
+      generator.definitions_["ha5883_func"] = HA5883_FUNC_DEF;
+    }
+
+    Blockly.Python.forBlock["esp32_ha5883_read"] = function (block, generator) {
+      _ha5883Setup(generator);
+      return [`_leer_ha5883()`, generator.ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_ha5883_x"] = function (block, generator) {
+      _ha5883Setup(generator);
+      return [`_leer_ha5883()[0]`, generator.ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_ha5883_y"] = function (block, generator) {
+      _ha5883Setup(generator);
+      return [`_leer_ha5883()[1]`, generator.ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_ha5883_z"] = function (block, generator) {
+      _ha5883Setup(generator);
+      return [`_leer_ha5883()[2]`, generator.ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_ha5883_heading"] = function (block, generator) {
+      _ha5883Setup(generator);
+      generator.definitions_["import_math"] = "import math";
+      generator.definitions_["ha5883_heading_func"] =
+`def _leer_ha5883_heading():
+    try:
+        x, y, z = _leer_ha5883()
+        h = math.atan2(y, x) * 180.0 / math.pi
+        if h < 0:
+            h += 360.0
+        return round(h, 2)
+    except Exception:
+        return 0.0`;
+      return [`_leer_ha5883_heading()`, generator.ORDER_ATOMIC];
+    };
+
+// ---------- GENERADORES NTP ----------
 
     Blockly.Python.forBlock["esp32_ntp_sync"] = function (block, generator) {
       generator.definitions_["import_ntptime"] = "import ntptime";
