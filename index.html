@@ -81,6 +81,7 @@
     <category name="📡 Comunicación" colour="#a5825b">
       <block type="esp32_print"></block>
       <block type="esp32_wifi_connect"><field name="SSID">MiRedWiFi</field><field name="PASS">MiClave123</field></block>
+      <block type="esp32_wifi_get_ip"></block>
     </category>
     <category name="📶 Bluetooth BLE" colour="#3b82f6">
       <block type="esp32_ble_init"><field name="NAME">ESP32-BLE</field></block>
@@ -120,8 +121,20 @@
     </category>
     <category name="🧭 Sensores I2C Avanzados" colour="#7c3aed">
       <block type="esp32_vl53l0x_read"></block>
+      <block type="esp32_vl53l0x_near"><value name="THRESHOLD"><shadow type="math_number"><field name="NUM">100</field></shadow></value></block>
       <block type="esp32_mpu6050_read"></block>
+      <block type="esp32_mpu6050_accel_x"></block>
+      <block type="esp32_mpu6050_accel_y"></block>
+      <block type="esp32_mpu6050_accel_z"></block>
+      <block type="esp32_mpu6050_accel_magnitude"></block>
+      <block type="esp32_mpu6050_gyro_x"></block>
+      <block type="esp32_mpu6050_gyro_y"></block>
+      <block type="esp32_mpu6050_gyro_z"></block>
       <block type="esp32_tcs34725_read"></block>
+      <block type="esp32_tcs34725_red"></block>
+      <block type="esp32_tcs34725_green"></block>
+      <block type="esp32_tcs34725_blue"></block>
+      <block type="esp32_tcs34725_clear"></block>
     </category>
     <category name="🌦️ Clima y Ambiente" colour="#06b6d4">
       <block type="esp32_dht_read"><field name="TYPE">DHT22</field><field name="PIN">4</field></block>
@@ -332,6 +345,15 @@
         this.setNextStatement(true, null);
         this.setColour("#a5825b");
         this.setTooltip("Colocalo dentro de CONFIGURACION.");
+      }
+    };
+
+    Blockly.Blocks["esp32_wifi_get_ip"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🌐 Obtener IP WiFi");
+        this.setOutput(true, "String");
+        this.setColour("#a5825b");
+        this.setTooltip("Requiere haber usado antes el bloque Conectar WiFi. Retorna la direccion IP asignada a la placa como texto.");
       }
     };
 
@@ -688,6 +710,120 @@
         this.setOutput(true, null);
         this.setColour("#7c3aed");
         this.setTooltip("Requiere el bus I2C inicializado. Retorna tupla (rojo, verde, azul, claridad).");
+      }
+    };
+
+    // ---------- BLOQUES I2C AVANZADOS: VARIABLES SEPARADAS ----------
+
+    Blockly.Blocks["esp32_vl53l0x_near"] = {
+      init: function () {
+        this.appendValueInput("THRESHOLD")
+          .appendField("📏 ¿VL53L0X detecta objeto a menos de")
+          .setCheck("Number");
+        this.appendDummyInput().appendField("mm?");
+        this.setInputsInline(true);
+        this.setOutput(true, "Boolean");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado y vl53l0x.py subido a la placa. Retorna verdadero si el objeto detectado esta mas cerca que el umbral en milimetros.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mpu6050_accel_x"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📐 Aceleracion X (MPU6050)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo la aceleracion en el eje X, en g.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mpu6050_accel_y"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📐 Aceleracion Y (MPU6050)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo la aceleracion en el eje Y, en g.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mpu6050_accel_z"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📐 Aceleracion Z (MPU6050)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo la aceleracion en el eje Z, en g.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mpu6050_accel_magnitude"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🎯 Magnitud total de aceleracion (MPU6050)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Combina los 3 ejes en un solo valor, util para detectar golpes o movimiento brusco.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mpu6050_gyro_x"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🌀 Giroscopio X (MPU6050)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo la velocidad angular en el eje X, en grados/seg.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mpu6050_gyro_y"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🌀 Giroscopio Y (MPU6050)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo la velocidad angular en el eje Y, en grados/seg.");
+      }
+    };
+
+    Blockly.Blocks["esp32_mpu6050_gyro_z"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🌀 Giroscopio Z (MPU6050)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo la velocidad angular en el eje Z, en grados/seg.");
+      }
+    };
+
+    Blockly.Blocks["esp32_tcs34725_red"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🔴 Rojo (TCS34725)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo el canal rojo (0-65535).");
+      }
+    };
+
+    Blockly.Blocks["esp32_tcs34725_green"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🟢 Verde (TCS34725)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo el canal verde (0-65535).");
+      }
+    };
+
+    Blockly.Blocks["esp32_tcs34725_blue"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🔵 Azul (TCS34725)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo el canal azul (0-65535).");
+      }
+    };
+
+    Blockly.Blocks["esp32_tcs34725_clear"] = {
+      init: function () {
+        this.appendDummyInput().appendField("⚪ Claridad (TCS34725)");
+        this.setOutput(true, "Number");
+        this.setColour("#7c3aed");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo el canal de claridad/luz (0-65535).");
       }
     };
 
@@ -1063,6 +1199,10 @@
       return code;
     };
 
+    Blockly.Python.forBlock["esp32_wifi_get_ip"] = function (block, generator) {
+      return [`wlan.ifconfig()[0]`, ORDER_ATOMIC];
+    };
+
     // ---------- GENERADORES BLE ----------
 
 // Asegurar la instancia del generador de Python
@@ -1347,9 +1487,7 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       return [`_leer_vl53l0x()`, ORDER_ATOMIC];
     };
 
-    Blockly.Python.forBlock["esp32_mpu6050_read"] = function (block, generator) {
-      generator.definitions_["mpu6050_state"] = "_mpu_ready = False";
-      generator.definitions_["mpu6050_func"] =
+    const MPU6050_FUNC_DEF =
 `def _leer_mpu6050():
     global _mpu_ready
     addr = 0x68
@@ -1367,13 +1505,58 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
     gy = _s16(d[10], d[11]) / 131.0
     gz = _s16(d[12], d[13]) / 131.0
     return (ax, ay, az, gx, gy, gz)`;
+
+    function _mpu6050Setup(generator) {
+      generator.definitions_["mpu6050_state"] = "_mpu_ready = False";
+      generator.definitions_["mpu6050_func"] = MPU6050_FUNC_DEF;
+    }
+
+    Blockly.Python.forBlock["esp32_mpu6050_read"] = function (block, generator) {
+      _mpu6050Setup(generator);
       return [`_leer_mpu6050()`, ORDER_ATOMIC];
     };
 
-    Blockly.Python.forBlock["esp32_tcs34725_read"] = function (block, generator) {
-      generator.definitions_["import_time"] = "import time";
-      generator.definitions_["tcs34725_state"] = "_tcs_ready = False";
-      generator.definitions_["tcs34725_func"] =
+    Blockly.Python.forBlock["esp32_mpu6050_accel_x"] = function (block, generator) {
+      _mpu6050Setup(generator);
+      return [`_leer_mpu6050()[0]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_mpu6050_accel_y"] = function (block, generator) {
+      _mpu6050Setup(generator);
+      return [`_leer_mpu6050()[1]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_mpu6050_accel_z"] = function (block, generator) {
+      _mpu6050Setup(generator);
+      return [`_leer_mpu6050()[2]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_mpu6050_gyro_x"] = function (block, generator) {
+      _mpu6050Setup(generator);
+      return [`_leer_mpu6050()[3]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_mpu6050_gyro_y"] = function (block, generator) {
+      _mpu6050Setup(generator);
+      return [`_leer_mpu6050()[4]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_mpu6050_gyro_z"] = function (block, generator) {
+      _mpu6050Setup(generator);
+      return [`_leer_mpu6050()[5]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_mpu6050_accel_magnitude"] = function (block, generator) {
+      _mpu6050Setup(generator);
+      generator.definitions_["import_math"] = "import math";
+      generator.definitions_["mpu6050_mag_func"] =
+`def _leer_mpu6050_mag():
+    ax, ay, az, gx, gy, gz = _leer_mpu6050()
+    return math.sqrt(ax * ax + ay * ay + az * az)`;
+      return [`_leer_mpu6050_mag()`, ORDER_ATOMIC];
+    };
+
+    const TCS34725_FUNC_DEF =
 `def _leer_tcs34725():
     global _tcs_ready
     addr = 0x29
@@ -1389,7 +1572,50 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
     g = d[4] | (d[5] << 8)
     b = d[6] | (d[7] << 8)
     return (r, g, b, c)`;
+
+    function _tcs34725Setup(generator) {
+      generator.definitions_["import_time"] = "import time";
+      generator.definitions_["tcs34725_state"] = "_tcs_ready = False";
+      generator.definitions_["tcs34725_func"] = TCS34725_FUNC_DEF;
+    }
+
+    Blockly.Python.forBlock["esp32_tcs34725_read"] = function (block, generator) {
+      _tcs34725Setup(generator);
       return [`_leer_tcs34725()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_tcs34725_red"] = function (block, generator) {
+      _tcs34725Setup(generator);
+      return [`_leer_tcs34725()[0]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_tcs34725_green"] = function (block, generator) {
+      _tcs34725Setup(generator);
+      return [`_leer_tcs34725()[1]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_tcs34725_blue"] = function (block, generator) {
+      _tcs34725Setup(generator);
+      return [`_leer_tcs34725()[2]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_tcs34725_clear"] = function (block, generator) {
+      _tcs34725Setup(generator);
+      return [`_leer_tcs34725()[3]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_vl53l0x_near"] = function (block, generator) {
+      generator.definitions_["vl53l0x_state"] = "_vl53 = None";
+      generator.definitions_["vl53l0x_func"] =
+`def _leer_vl53l0x():
+    global _vl53
+    if _vl53 is None:
+        from vl53l0x import VL53L0X
+        _vl53 = VL53L0X(_i2c)
+        _vl53.start()
+    return _vl53.read()`;
+      const threshold = generator.valueToCode(block, "THRESHOLD", ORDER_ATOMIC) || "0";
+      return [`(_leer_vl53l0x() < ${threshold})`, ORDER_ATOMIC];
     };
 
     // ---------- GENERADORES CLIMA Y AMBIENTE ----------
