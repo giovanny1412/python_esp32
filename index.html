@@ -2499,119 +2499,67 @@ _web_response_buf['body'] = str(${content})
 `;
     };
 
-    Blockly.Python.forBlock["esp32_web_run"] = function (block, generator) {
-      generator.definitions_["import_time"] = "import time";
-      let code = `events = _web_poll.poll(10)
-`;
-      code += `for sock, evt in events:
-`;
-      code += `    if sock is _web_sock:
-`;
-      code += `        try:
-`;
-      code += `            cl, addr = _web_sock.accept()
-`;
-      code += `            cl.setblocking(False)
-`;
-      code += `            _web_poll.register(cl, select.POLLIN)
-`;
-      code += `            _web_clients[id(cl)] = {'sock': cl, 'buf': b''}
-`;
-      code += `        except:
-`;
-      code += `            pass
-`;
-      code += `    else:
-`;
-      code += `        cid = id(sock)
-`;
-      code += `        if cid in _web_clients:
-`;
-      code += `            try:
-`;
-      code += `                data = sock.recv(1024)
-`;
-      code += `                if data:
-`;
-      code += `                    _web_clients[cid]['buf'] += data
-`;
-      code += `                    if b'\\r\\n\\r\\n' in _web_clients[cid]['buf']:
-`;
-      code += `                        req = _web_clients[cid]['buf'].decode('utf-8', 'ignore')
-`;
-      code += `                        lines = req.split('\\r\\n')
-`;
-      code += `                        if len(lines) > 0:
-`;
-      code += `                            parts = lines[0].split()
-`;
-      code += `                            if len(parts) >= 2:
-`;
-      code += `                                req_method = parts[0]
-`;
-      code += `                                req_path = parts[1]
-`;
-      code += `                                req_body = ''
-`;
-      code += `                                if '\\r\\n\\r\\n' in req:
-`;
-      code += `                                    req_body = req.split('\\r\\n\\r\\n', 1)[1]
-`;
-      code += `                                _web_response_buf.clear()
-`;
-      code += `                                handler = _web_routes.get((req_method, req_path))
-`;
-      code += `                                if handler:
-`;
-      code += `                                    handler(req_path, req_body)
-`;
-      code += `                                else:
-`;
-      code += `                                    _web_response_buf = {'status': '404 Not Found', 'type': 'text/plain', 'body': 'Not Found'}
-`;
-      code += `                                resp = 'HTTP/1.1 ' + _web_response_buf.get('status', '200 OK') + '\\r\\n'
-`;
-      code += `                                resp += 'Content-Type: ' + _web_response_buf.get('type', 'text/html') + '\\r\\n'
-`;
-      code += `                                resp += 'Connection: close\\r\\n\\r\\n'
-`;
-      code += `                                resp += _web_response_buf.get('body', '')
-`;
-      code += `                                sock.send(resp.encode())
-`;
-      code += `                        _web_poll.unregister(sock)
-`;
-      code += `                        sock.close()
-`;
-      code += `                        del _web_clients[cid]
-`;
-      code += `                else:
-`;
-      code += `                    _web_poll.unregister(sock)
-`;
-      code += `                    sock.close()
-`;
-      code += `                    del _web_clients[cid]
-`;
-      code += `            except Exception as e:
-`;
-      code += `                try:
-`;
-      code += `                    _web_poll.unregister(sock)
-`;
-      code += `                    sock.close()
-`;
-      code += `                except:
-`;
-      code += `                    pass
-`;
-      code += `                if cid in _web_clients:
-`;
-      code += `                    del _web_clients[cid]
-`;
-      return code;
-    };
-
+Blockly.Python.forBlock["esp32_web_run"] = function (block, generator) {
+  generator.definitions_["import_time"] = "import time";
+  let code = `events = _web_poll.poll(10)\n`;
+  code += `for sock, evt in events:\n`;
+  code += `    if sock is _web_sock:\n`;
+  code += `        try:\n`;
+  code += `            cl, addr = _web_sock.accept()\n`;
+  code += `            cl.setblocking(False)\n`;
+  code += `            _web_poll.register(cl, select.POLLIN)\n`;
+  code += `            _web_clients[id(cl)] = {'sock': cl, 'buf': b''}\n`;
+  code += `        except:\n`;
+  code += `            pass\n`;
+  code += `    else:\n`;
+  code += `        cid = id(sock)\n`;
+  code += `        if cid in _web_clients:\n`;
+  code += `            try:\n`;
+  code += `                data = sock.recv(1024)\n`;
+  code += `                if data:\n`;
+  code += `                    _web_clients[cid]['buf'] += data\n`;
+  code += `                    if b'\\r\\n\\r\\n' in _web_clients[cid]['buf']:\n`;
+  code += `                        req = _web_clients[cid]['buf'].decode('utf-8', 'ignore')\n`;
+  code += `                        lines = req.split('\\r\\n')\n`;
+  code += `                        if len(lines) > 0:\n`;
+  code += `                            parts = lines[0].split()\n`;
+  code += `                            if len(parts) >= 2:\n`;
+  code += `                                req_method = parts[0]\n`;
+  code += `                                req_path = parts[1]\n`;
+  code += `                                req_body = ''\n`;
+  code += `                                if '\\r\\n\\r\\n' in req:\n`;
+  code += `                                    req_body = req.split('\\r\\n\\r\\n', 1)[1]\n`;
+  
+  // CORRECCIÓN: Se elimina _web_response_buf.clear() y se asignan valores base
+  code += `                                _web_response_buf = {'status': '200 OK', 'type': 'text/html', 'body': ''}\n`;
+  code += `                                handler = _web_routes.get((req_method, req_path))\n`;
+  code += `                                if handler:\n`;
+  code += `                                    handler(req_path, req_body)\n`;
+  code += `                                else:\n`;
+  code += `                                    _web_response_buf = {'status': '404 Not Found', 'type': 'text/plain', 'body': 'Not Found'}\n`;
+  
+  code += `                                resp = 'HTTP/1.1 ' + _web_response_buf.get('status', '200 OK') + '\\r\\n'\n`;
+  code += `                                resp += 'Content-Type: ' + _web_response_buf.get('type', 'text/html') + '\\r\\n'\n`;
+  code += `                                resp += 'Connection: close\\r\\n\\r\\n'\n`;
+  code += `                                resp += _web_response_buf.get('body', '')\n`;
+  code += `                                sock.send(resp.encode())\n`;
+  code += `                        _web_poll.unregister(sock)\n`;
+  code += `                        sock.close()\n`;
+  code += `                        del _web_clients[cid]\n`;
+  code += `                else:\n`;
+  code += `                    _web_poll.unregister(sock)\n`;
+  code += `                    sock.close()\n`;
+  code += `                    del _web_clients[cid]\n`;
+  code += `            except Exception as e:\n`;
+  code += `                try:\n`;
+  code += `                    _web_poll.unregister(sock)\n`;
+  code += `                    sock.close()\n`;
+  code += `                except:\n`;
+  code += `                    pass\n`;
+  code += `                if cid in _web_clients:\n`;
+  code += `                    del _web_clients[cid]\n`;
+  return code;
+};
     // ---------- GENERADORES WIFI AP ----------
 
     Blockly.Python.forBlock["esp32_wifi_ap"] = function (block, generator) {
@@ -2840,7 +2788,7 @@ Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generato
     addr = 0x0D
     if not _ha_ready:
         _i2c.writeto_mem(addr, 0x0B, bytes([0x01]))
-        _i2c.writeto_mem(addr, 0x09, bytes([0x0D]))
+        _i2c.writeto_mem(addr, 0x09, bytes([0x1D]))
         _ha_ready = True
         time.sleep_ms(10)
     d = _i2c.readfrom_mem(addr, 0x00, 6)
