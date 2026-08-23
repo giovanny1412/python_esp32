@@ -125,7 +125,16 @@
     </category>
     <category name="🌦️ Clima y Ambiente" colour="#06b6d4">
       <block type="esp32_dht_read"><field name="TYPE">DHT22</field><field name="PIN">4</field></block>
+      <block type="esp32_dht_temperature"><field name="TYPE">DHT22</field><field name="PIN">4</field></block>
+      <block type="esp32_dht_humidity"><field name="TYPE">DHT22</field><field name="PIN">4</field></block>
       <block type="esp32_bmp_bme_read"><field name="TYPE">BME280</field></block>
+      <block type="esp32_bmp_bme_temperature"><field name="TYPE">BME280</field></block>
+      <block type="esp32_bmp_bme_pressure"><field name="TYPE">BME280</field></block>
+      <block type="esp32_bmp_bme_humidity"></block>
+    </category>
+    <category name="🎤 Micrófono I2S" colour="#db2777">
+      <block type="esp32_i2s_mic_init"><field name="ID">0</field><field name="SCK">14</field><field name="WS">15</field><field name="SD">32</field><field name="RATE">16000</field></block>
+      <block type="esp32_i2s_mic_read_level"></block>
     </category>
     <category name="🖥️ Pantalla OLED 128x64" colour="#0891b2">
       <block type="esp32_oled_init"></block>
@@ -705,6 +714,98 @@
         this.setOutput(true, null);
         this.setColour("#06b6d4");
         this.setTooltip("Requiere el bus I2C inicializado. BME280 retorna (temperatura C, presion hPa, humedad %). BMP280 retorna (temperatura C, presion hPa, None).");
+      }
+    };
+
+    // ---------- BLOQUES CLIMA: VARIABLES SEPARADAS ----------
+
+    Blockly.Blocks["esp32_dht_temperature"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌡️ Temperatura sensor")
+          .appendField(new Blockly.FieldDropdown([["DHT11", "DHT11"], ["DHT22", "DHT22"]]), "TYPE")
+          .appendField("pin:")
+          .appendField(new Blockly.FieldNumber(4, 0, 48, 1), "PIN");
+        this.setOutput(true, "Number");
+        this.setColour("#06b6d4");
+        this.setTooltip("Retorna solo la temperatura en C del sensor DHT, como variable separada de la humedad.");
+      }
+    };
+
+    Blockly.Blocks["esp32_dht_humidity"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("💧 Humedad sensor")
+          .appendField(new Blockly.FieldDropdown([["DHT11", "DHT11"], ["DHT22", "DHT22"]]), "TYPE")
+          .appendField("pin:")
+          .appendField(new Blockly.FieldNumber(4, 0, 48, 1), "PIN");
+        this.setOutput(true, "Number");
+        this.setColour("#06b6d4");
+        this.setTooltip("Retorna solo la humedad en % del sensor DHT, como variable separada de la temperatura.");
+      }
+    };
+
+    Blockly.Blocks["esp32_bmp_bme_temperature"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🌡️ Temperatura")
+          .appendField(new Blockly.FieldDropdown([["BME280", "BME280"], ["BMP280", "BMP280"]]), "TYPE");
+        this.setOutput(true, "Number");
+        this.setColour("#06b6d4");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo la temperatura en C, como variable separada.");
+      }
+    };
+
+    Blockly.Blocks["esp32_bmp_bme_pressure"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📊 Presion")
+          .appendField(new Blockly.FieldDropdown([["BME280", "BME280"], ["BMP280", "BMP280"]]), "TYPE");
+        this.setOutput(true, "Number");
+        this.setColour("#06b6d4");
+        this.setTooltip("Requiere el bus I2C inicializado. Retorna solo la presion en hPa, como variable separada.");
+      }
+    };
+
+    Blockly.Blocks["esp32_bmp_bme_humidity"] = {
+      init: function () {
+        this.appendDummyInput().appendField("💧 Humedad BME280");
+        this.setOutput(true, "Number");
+        this.setColour("#06b6d4");
+        this.setTooltip("Requiere el bus I2C inicializado y un sensor BME280 (el BMP280 no mide humedad). Retorna la humedad en %, como variable separada.");
+      }
+    };
+
+    // ---------- BLOQUES MICROFONO I2S ----------
+
+    Blockly.Blocks["esp32_i2s_mic_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🎤 Inicializar microfono I2S INMP441  ID:")
+          .appendField(new Blockly.FieldDropdown([["0", "0"], ["1", "1"]]), "ID");
+        this.appendDummyInput()
+          .appendField("SCK:")
+          .appendField(new Blockly.FieldNumber(14, 0, 48, 1), "SCK")
+          .appendField("WS:")
+          .appendField(new Blockly.FieldNumber(15, 0, 48, 1), "WS")
+          .appendField("SD:")
+          .appendField(new Blockly.FieldNumber(32, 0, 48, 1), "SD");
+        this.appendDummyInput()
+          .appendField("frecuencia de muestreo (Hz):")
+          .appendField(new Blockly.FieldNumber(16000, 8000, 48000, 1), "RATE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#db2777");
+        this.setTooltip("Colocalo en CONFIGURACION. SCK=reloj, WS=seleccion de canal (LRCLK), SD=datos del microfono INMP441.");
+      }
+    };
+
+    Blockly.Blocks["esp32_i2s_mic_read_level"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🎤 Leer nivel de audio INMP441 (amplitud)");
+        this.setOutput(true, "Number");
+        this.setColour("#db2777");
+        this.setTooltip("Requiere el microfono I2S inicializado. Retorna la amplitud pico del ultimo bloque de audio capturado (0 a 32767).");
       }
     };
 
@@ -1293,11 +1394,9 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
 
     // ---------- GENERADORES CLIMA Y AMBIENTE ----------
 
-    Blockly.Python.forBlock["esp32_dht_read"] = function (block, generator) {
+    function _dhtSetup(generator, pin, type) {
       generator.definitions_["import_dht"] = "import dht";
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
-      const type = block.getFieldValue("TYPE");
-      const pin = block.getFieldValue("PIN");
       const varName = `_dht_${pin}`;
       const funcName = `_leer_dht_${pin}`;
       generator.definitions_[`dht_${pin}_init`] = `${varName} = dht.${type}(Pin(${pin}))`;
@@ -1305,14 +1404,31 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
 `def ${funcName}():
     ${varName}.measure()
     return (${varName}.temperature(), ${varName}.humidity())`;
+      return funcName;
+    }
+
+    Blockly.Python.forBlock["esp32_dht_read"] = function (block, generator) {
+      const type = block.getFieldValue("TYPE");
+      const pin = block.getFieldValue("PIN");
+      const funcName = _dhtSetup(generator, pin, type);
       return [`${funcName}()`, ORDER_ATOMIC];
     };
 
-    Blockly.Python.forBlock["esp32_bmp_bme_read"] = function (block, generator) {
+    Blockly.Python.forBlock["esp32_dht_temperature"] = function (block, generator) {
       const type = block.getFieldValue("TYPE");
-      const isBme = type === "BME280" ? "True" : "False";
-      generator.definitions_["bmp280_state"] = "_bmp_ready = False\n_bmp_cal = {}";
-      generator.definitions_["bmp280_func"] =
+      const pin = block.getFieldValue("PIN");
+      const funcName = _dhtSetup(generator, pin, type);
+      return [`${funcName}()[0]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_dht_humidity"] = function (block, generator) {
+      const type = block.getFieldValue("TYPE");
+      const pin = block.getFieldValue("PIN");
+      const funcName = _dhtSetup(generator, pin, type);
+      return [`${funcName}()[1]`, ORDER_ATOMIC];
+    };
+
+    const BMP_BME_FUNC_DEF =
 `def _leer_bmp_bme(es_bme):
     global _bmp_ready, _bmp_cal
     addr = 0x76
@@ -1378,7 +1494,67 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
         if h < 0.0: h = 0.0
         return (temp, pressure, h)
     return (temp, pressure, None)`;
+
+    Blockly.Python.forBlock["esp32_bmp_bme_read"] = function (block, generator) {
+      const type = block.getFieldValue("TYPE");
+      const isBme = type === "BME280" ? "True" : "False";
+      generator.definitions_["bmp280_state"] = "_bmp_ready = False\n_bmp_cal = {}";
+      generator.definitions_["bmp280_func"] = BMP_BME_FUNC_DEF;
       return [`_leer_bmp_bme(${isBme})`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_bmp_bme_temperature"] = function (block, generator) {
+      const type = block.getFieldValue("TYPE");
+      const isBme = type === "BME280" ? "True" : "False";
+      generator.definitions_["bmp280_state"] = "_bmp_ready = False\n_bmp_cal = {}";
+      generator.definitions_["bmp280_func"] = BMP_BME_FUNC_DEF;
+      return [`_leer_bmp_bme(${isBme})[0]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_bmp_bme_pressure"] = function (block, generator) {
+      const type = block.getFieldValue("TYPE");
+      const isBme = type === "BME280" ? "True" : "False";
+      generator.definitions_["bmp280_state"] = "_bmp_ready = False\n_bmp_cal = {}";
+      generator.definitions_["bmp280_func"] = BMP_BME_FUNC_DEF;
+      return [`_leer_bmp_bme(${isBme})[1]`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_bmp_bme_humidity"] = function (block, generator) {
+      generator.definitions_["bmp280_state"] = "_bmp_ready = False\n_bmp_cal = {}";
+      generator.definitions_["bmp280_func"] = BMP_BME_FUNC_DEF;
+      return [`_leer_bmp_bme(True)[2]`, ORDER_ATOMIC];
+    };
+
+    // ---------- GENERADORES MICROFONO I2S ----------
+
+    Blockly.Python.forBlock["esp32_i2s_mic_init"] = function (block, generator) {
+      generator.definitions_["import_i2s"] = "from machine import I2S, Pin";
+      const id = block.getFieldValue("ID");
+      const sck = block.getFieldValue("SCK");
+      const ws = block.getFieldValue("WS");
+      const sd = block.getFieldValue("SD");
+      const rate = block.getFieldValue("RATE");
+      return `_mic = I2S(${id}, sck=Pin(${sck}), ws=Pin(${ws}), sd=Pin(${sd}), mode=I2S.RX, bits=32, format=I2S.MONO, rate=${rate}, ibuf=4096)
+_mic_buf = bytearray(4096)
+`;
+    };
+
+    Blockly.Python.forBlock["esp32_i2s_mic_read_level"] = function (block, generator) {
+      generator.definitions_["i2s_mic_read_func"] =
+`def _leer_mic_nivel():
+    n = _mic.readinto(_mic_buf)
+    if not n:
+        return 0
+    pico = 0
+    for i in range(0, n, 4):
+        v = _mic_buf[i + 2] | (_mic_buf[i + 3] << 8)
+        if v > 32767:
+            v -= 65536
+        v = abs(v)
+        if v > pico:
+            pico = v
+    return pico`;
+      return ["_leer_mic_nivel()", ORDER_ATOMIC];
     };
 
     // ---------- GENERADORES PANTALLA OLED 128x64 ----------
