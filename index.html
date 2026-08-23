@@ -1369,12 +1369,15 @@ Blockly.Blocks["esp32_pwm_write"] = {
       const pin = block.getFieldValue("PIN");
       return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
     };
-
-    Blockly.Python.forBlock["esp32_analog_read"] = function (block, generator) {
-      generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
-      const pin = block.getFieldValue("PIN");
-      return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
-    };
+Blockly.Python.forBlock["esp32_analog_read"] = function (block, generator) {
+  generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+  const pin = block.getFieldValue("PIN");
+  
+  // Crea la instancia global con atenuación de 11 dB para leer de 0V a 3.3V
+  generator.definitions_[`adc_init_${pin}`] = `_adc_${pin} = ADC(Pin(${pin}))\n_adc_${pin}.atten(ADC.ATTN_11DB)`;
+  
+  return [`_adc_${pin}.read_u16()`, Blockly.Python.ORDER_ATOMIC];
+};
 
 Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
   var pin = block.getFieldValue("PIN");
