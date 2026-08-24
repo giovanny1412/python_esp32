@@ -431,9 +431,9 @@ Blockly.Blocks["esp32_pwm_write"] = {
           .appendField(new Blockly.FieldDropdown([
             ["Leer+Notificar", "0x02|0x10"],
             ["Solo Leer", "0x02"],
-            ["Solo Escribir", "0x08"],
-            ["Leer+Escribir", "0x02|0x08"],
-            ["Leer+Escribir+Notificar", "0x02|0x08|0x10"]
+            ["Solo Escribir", "0x04|0x08"],
+            ["Leer+Escribir", "0x02|0x04|0x08"],
+            ["Leer+Escribir+Notificar", "0x02|0x04|0x08|0x10"]
           ]), "PROPS");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
