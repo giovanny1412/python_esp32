@@ -1357,6 +1357,20 @@ Blockly.Blocks["esp32_pwm_write"] = {
 
     const ORDER_ATOMIC = (Blockly.Python.ORDER_ATOMIC !== undefined) ? Blockly.Python.ORDER_ATOMIC : 0;
 
+    // Sobrescribe el generador estándar de "cambiar [variable] por" para que
+    // genere una suma simple (variable = variable + N) en lugar del código
+    // por defecto de Blockly, que hace "import numbers" + isinstance(...).
+    // MicroPython en ESP32 no trae el módulo "numbers", así que esa
+    // importación rompía la subida del código.
+    Blockly.Python.forBlock["math_change"] = function (block, generator) {
+      const argument0 = generator.valueToCode(block, "DELTA", ORDER_ATOMIC) || "0";
+      const varName = generator.nameDB_.getName(
+        block.getFieldValue("VAR"),
+        Blockly.Names.NameType.VARIABLE
+      );
+      return `${varName} = ${varName} + ${argument0}\n`;
+    };
+
     Blockly.Python.forBlock["esp32_digital_write"] = function (block, generator) {
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
