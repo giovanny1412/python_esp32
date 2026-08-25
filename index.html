@@ -77,6 +77,10 @@
       <block type="esp32_analog_read"><field name="PIN">34</field></block>
       <block type="esp32_pwm_write"><field name="PIN">5</field></block>
     </category>
+    <category name="✋ Pines Táctiles (Touch)" colour="#c026d3">
+      <block type="esp32_touch_read"></block>
+      <block type="esp32_touch_touched"><field name="THRESHOLD">200</field></block>
+    </category>
     <category name="⏱️ Tiempo" colour="#5ba5a0">
       <block type="esp32_delay"><field name="SECONDS">1</field></block>
       <block type="esp32_delay_ms"><field name="MS">500</field></block>
@@ -349,6 +353,45 @@ Blockly.Blocks["esp32_pwm_write"] = {
     this.setColour("#8B5CA8");
   }
 };
+
+    const TOUCH_PIN_OPTIONS = [
+      ["T0 - GPIO4", "4"],
+      ["T1 - GPIO0", "0"],
+      ["T2 - GPIO2", "2"],
+      ["T3 - GPIO15", "15"],
+      ["T4 - GPIO13", "13"],
+      ["T5 - GPIO12", "12"],
+      ["T6 - GPIO14", "14"],
+      ["T7 - GPIO27", "27"],
+      ["T8 - GPIO32", "32"],
+      ["T9 - GPIO33", "33"]
+    ];
+    const TOUCH_TOOLTIP = "⚠️ Solo funciona en placas ESP32 original (Dev Module / WROOM / WROVER). Los pines táctiles capacitivos NO existen en ESP32-S3, C3 ni C6 (esas placas no tienen ese periférico). Un valor MENOR indica que el pin fue tocado; un valor MAYOR indica que no hay contacto.";
+
+    Blockly.Blocks["esp32_touch_read"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("Leer valor táctil pin")
+          .appendField(new Blockly.FieldDropdown(TOUCH_PIN_OPTIONS), "PIN");
+        this.setOutput(true, "Number");
+        this.setColour("#c026d3");
+        this.setTooltip(TOUCH_TOOLTIP);
+      }
+    };
+
+    Blockly.Blocks["esp32_touch_touched"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("¿Pin táctil")
+          .appendField(new Blockly.FieldDropdown(TOUCH_PIN_OPTIONS), "PIN")
+          .appendField("tocado? (umbral")
+          .appendField(new Blockly.FieldNumber(200, 0, 1200, 1), "THRESHOLD")
+          .appendField(")");
+        this.setOutput(true, "Boolean");
+        this.setColour("#c026d3");
+        this.setTooltip(TOUCH_TOOLTIP + " Este bloque compara la lectura contra el umbral que definas (ajústalo probando: toca el pin, mira el valor con 'Leer valor táctil', y pon un umbral entre el valor tocado y el valor en reposo).");
+      }
+    };
 
     Blockly.Blocks["esp32_delay"] = {
       init: function () {
@@ -1444,6 +1487,23 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
 
   return `_pwm_${pin}.duty_u16(int(${duty}))\n`;
 };
+
+    Blockly.Python.forBlock["esp32_touch_read"] = function (block, generator) {
+      generator.definitions_["import_machine_touchpad"] = "from machine import TouchPad, Pin";
+      const pin = block.getFieldValue("PIN");
+      const varName = `_touch_${pin}`;
+      generator.definitions_[`touch_init_${pin}`] = `${varName} = TouchPad(Pin(${pin}))`;
+      return [`${varName}.read()`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_touch_touched"] = function (block, generator) {
+      generator.definitions_["import_machine_touchpad"] = "from machine import TouchPad, Pin";
+      const pin = block.getFieldValue("PIN");
+      const threshold = block.getFieldValue("THRESHOLD");
+      const varName = `_touch_${pin}`;
+      generator.definitions_[`touch_init_${pin}`] = `${varName} = TouchPad(Pin(${pin}))`;
+      return [`(${varName}.read() < ${threshold})`, ORDER_ATOMIC];
+    };
 
     Blockly.Python.forBlock["esp32_delay"] = function (block, generator) {
       generator.definitions_["import_time"] = "import time";
