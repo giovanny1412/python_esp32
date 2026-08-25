@@ -71,7 +71,6 @@
     <category name="🔌 Pines Digitales" colour="#A85B5B">
       <block type="esp32_digital_write"><field name="PIN">2</field></block>
       <block type="esp32_digital_read"><field name="PIN">4</field></block>
-      <block type="esp32_pin_pullup"><field name="PIN">0</field></block>
       <block type="esp32_digital_write_value"><field name="PIN">2</field></block>
     </category>
     <category name="📈 Analógico y PWM" colour="#8B5CA8">
@@ -294,23 +293,16 @@
       init: function () {
         this.appendDummyInput()
           .appendField("Leer pin digital")
-          .appendField(new Blockly.FieldNumber(4, 0, 48, 1), "PIN");
+          .appendField(new Blockly.FieldNumber(4, 0, 48, 1), "PIN")
+          .appendField("modo")
+          .appendField(new Blockly.FieldDropdown([
+            ["Normal", "NONE"],
+            ["Pull-Up", "UP"],
+            ["Pull-Down", "DOWN"]
+          ]), "PULL");
         this.setOutput(true, "Boolean");
         this.setColour("#A85B5B");
-      }
-    };
-
-    Blockly.Blocks["esp32_pin_pullup"] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("Activar resistencia")
-          .appendField(new Blockly.FieldDropdown([["Pull-Up", "UP"], ["Pull-Down", "DOWN"]]), "MODE")
-          .appendField("Pin")
-          .appendField(new Blockly.FieldNumber(0, 0, 48, 1), "PIN");
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour("#A85B5B");
-        this.setTooltip("Configura el pin como entrada con resistencia interna Pull-Up o Pull-Down activada. Colócalo antes de leer el pin (usualmente en la Configuración inicial).");
+        this.setTooltip("Lee el estado del pin. 'Normal' deja el pin flotante (usa resistencia externa si tu circuito la necesita); 'Pull-Up'/'Pull-Down' activan la resistencia interna del ESP32.");
       }
     };
 
@@ -1410,14 +1402,11 @@ Blockly.Blocks["esp32_pwm_write"] = {
     Blockly.Python.forBlock["esp32_digital_read"] = function (block, generator) {
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
-      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
-    };
-
-    Blockly.Python.forBlock["esp32_pin_pullup"] = function (block, generator) {
-      generator.definitions_["import_machine_pin"] = "from machine import Pin";
-      const pin = block.getFieldValue("PIN");
-      const mode = block.getFieldValue("MODE"); // UP o DOWN
-      return `Pin(${pin}, Pin.IN, Pin.PULL_${mode})\n`;
+      const pull = block.getFieldValue("PULL");
+      let pullArg = "";
+      if (pull === "UP") pullArg = ", Pin.PULL_UP";
+      else if (pull === "DOWN") pullArg = ", Pin.PULL_DOWN";
+      return [`Pin(${pin}, Pin.IN${pullArg}).value()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_digital_write_value"] = function (block, generator) {
