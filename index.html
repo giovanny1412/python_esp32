@@ -85,6 +85,22 @@
       <block type="esp32_delay"><field name="SECONDS">1</field></block>
       <block type="esp32_delay_ms"><field name="MS">500</field></block>
     </category>
+    <category name="⚡ Interrupciones y Timers" colour="#ea580c">
+      <block type="esp32_pin_irq"><field name="PIN">4</field></block>
+      <block type="esp32_timer_irq"><field name="ID">0</field><field name="PERIOD">1000</field></block>
+    </category>
+    <category name="💾 Almacenamiento (Archivos/SD)" colour="#0d9488">
+      <block type="esp32_sd_init"><field name="ID">1</field><field name="SCK">18</field><field name="MOSI">23</field><field name="MISO">19</field><field name="CS">5</field></block>
+      <block type="esp32_file_write"><field name="FILENAME">datos.txt</field><field name="MODE">a</field></block>
+      <block type="esp32_file_read"><field name="FILENAME">datos.txt</field></block>
+      <block type="esp32_file_exists"><field name="FILENAME">datos.txt</field></block>
+      <block type="esp32_file_delete"><field name="FILENAME">datos.txt</field></block>
+    </category>
+    <category name="🔋 Energía y Deep Sleep" colour="#65a30d">
+      <block type="esp32_deep_sleep_ms"><field name="MS">10000</field></block>
+      <block type="esp32_deep_sleep_pin_wake"><field name="PIN">33</field></block>
+      <block type="esp32_woke_from_sleep"></block>
+    </category>
     <category name="📡 Comunicación" colour="#a5825b">
       <block type="esp32_print"></block>
       <block type="esp32_wifi_connect"><field name="SSID">MiRedWiFi</field><field name="PASS">MiClave123</field></block>
@@ -419,6 +435,153 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour("#5ba5a0");
+      }
+    };
+
+    // ---------- BLOQUES INTERRUPCIONES Y TIMERS ----------
+
+    Blockly.Blocks["esp32_pin_irq"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("⚡ Cuando el pin")
+          .appendField(new Blockly.FieldNumber(4, 0, 48, 1), "PIN")
+          .appendField("cambie:")
+          .appendField(new Blockly.FieldDropdown([["Subida (LOW→HIGH)", "RISING"], ["Bajada (HIGH→LOW)", "FALLING"], ["Ambos", "BOTH"]]), "TRIGGER")
+          .appendField("modo:")
+          .appendField(new Blockly.FieldDropdown([["Pull-Up", "UP"], ["Pull-Down", "DOWN"], ["Normal", "NONE"]]), "PULL");
+        this.appendStatementInput("DO").appendField("hacer:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ea580c");
+        this.setTooltip("Colócalo en CONFIGURACION (se registra una sola vez). El código de 'hacer' se ejecuta automáticamente cuando el pin cambia, interrumpiendo el bucle principal en ese instante — no necesitas estar preguntando su valor en el bucle. Usa esto para botones que no quieres perderte, o eventos rápidos.");
+      }
+    };
+
+    Blockly.Blocks["esp32_timer_irq"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("⏱️⚡ Cada")
+          .appendField(new Blockly.FieldNumber(1000, 1, 3600000, 1), "PERIOD")
+          .appendField("ms (temporizador por hardware, ID:")
+          .appendField(new Blockly.FieldDropdown([["0", "0"], ["1", "1"], ["2", "2"], ["3", "3"]]), "ID")
+          .appendField(")");
+        this.appendStatementInput("DO").appendField("hacer:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#ea580c");
+        this.setTooltip("Colócalo en CONFIGURACION (se registra una sola vez). El código de 'hacer' se ejecuta automáticamente cada X milisegundos, sin importar qué esté haciendo el bucle principal en ese momento. Usa un ID de timer distinto para cada temporizador que uses (0 a 3). Ideal para tareas periódicas exactas (parpadeo, muestreo) sin bloquear el resto del programa con 'Esperar'.");
+      }
+    };
+
+    // ---------- BLOQUES ALMACENAMIENTO (ARCHIVOS / SD) ----------
+
+    Blockly.Blocks["esp32_sd_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("💾 Inicializar tarjeta SD (SPI)  ID:")
+          .appendField(new Blockly.FieldDropdown([["1", "1"], ["2", "2"]]), "ID");
+        this.appendDummyInput()
+          .appendField("SCK:")
+          .appendField(new Blockly.FieldNumber(18, 0, 48, 1), "SCK")
+          .appendField("MOSI:")
+          .appendField(new Blockly.FieldNumber(23, 0, 48, 1), "MOSI")
+          .appendField("MISO:")
+          .appendField(new Blockly.FieldNumber(19, 0, 48, 1), "MISO")
+          .appendField("CS:")
+          .appendField(new Blockly.FieldNumber(5, 0, 48, 1), "CS");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0d9488");
+        this.setTooltip("Colócalo en CONFIGURACION. Monta la tarjeta SD en '/sd'. REQUIERE subir antes el archivo driver 'sdcard.py' (de micropython-lib) a la placa con Thonny — no viene incluido en MicroPython. Una vez montada, usa los bloques de Archivo normales con rutas que empiecen con '/sd/', por ejemplo '/sd/datos.txt', para leer/escribir en la SD en vez de en la memoria interna.");
+      }
+    };
+
+    Blockly.Blocks["esp32_file_write"] = {
+      init: function () {
+        this.appendValueInput("CONTENT")
+          .appendField("💾 Escribir archivo")
+          .appendField(new Blockly.FieldTextInput("datos.txt"), "FILENAME")
+          .appendField("contenido:");
+        this.appendDummyInput()
+          .appendField("modo:")
+          .appendField(new Blockly.FieldDropdown([["Agregar línea (a)", "a"], ["Reemplazar todo (w)", "w"]]), "MODE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0d9488");
+        this.setTooltip("Escribe en un archivo de la memoria interna (o de la SD si el nombre empieza con '/sd/'). 'Agregar línea' añade el contenido al final del archivo y agrega un salto de línea automáticamente (ideal para registrar datos). 'Reemplazar todo' borra el archivo y escribe solo el contenido dado, sin salto de línea.");
+      }
+    };
+
+    Blockly.Blocks["esp32_file_read"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("💾 Leer archivo completo:")
+          .appendField(new Blockly.FieldTextInput("datos.txt"), "FILENAME");
+        this.setOutput(true, "String");
+        this.setColour("#0d9488");
+        this.setTooltip("Devuelve todo el contenido del archivo como texto. Si el archivo no existe, devuelve texto vacío en lugar de detener el programa.");
+      }
+    };
+
+    Blockly.Blocks["esp32_file_exists"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("💾 ¿Existe el archivo")
+          .appendField(new Blockly.FieldTextInput("datos.txt"), "FILENAME")
+          .appendField("?");
+        this.setOutput(true, "Boolean");
+        this.setColour("#0d9488");
+        this.setTooltip("Verdadero si el archivo existe en la memoria interna o en la SD (según la ruta dada).");
+      }
+    };
+
+    Blockly.Blocks["esp32_file_delete"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("💾 Eliminar archivo:")
+          .appendField(new Blockly.FieldTextInput("datos.txt"), "FILENAME");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0d9488");
+        this.setTooltip("Elimina el archivo si existe. Si no existe, no hace nada (no da error).");
+      }
+    };
+
+    // ---------- BLOQUES ENERGIA Y DEEP SLEEP ----------
+
+    Blockly.Blocks["esp32_deep_sleep_ms"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔋 Entrar en deep sleep durante")
+          .appendField(new Blockly.FieldNumber(10000, 1, 4294967295, 1), "MS")
+          .appendField("ms");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#65a30d");
+        this.setTooltip("⚠️ Apaga casi todo el ESP32 para ahorrar batería. Al despertar, la placa se REINICIA por completo y tu programa vuelve a empezar desde el inicio (no continúa donde quedó) — cualquier bloque después de este NUNCA se ejecuta. Usa 'estado_final=estado' etc. guardado en un archivo si necesitas recordar algo entre ciclos de sueño.");
+      }
+    };
+
+    Blockly.Blocks["esp32_deep_sleep_pin_wake"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔋 Configurar despertar por pin")
+          .appendField(new Blockly.FieldNumber(33, 0, 48, 1), "PIN")
+          .appendField("en nivel")
+          .appendField(new Blockly.FieldDropdown([["Alto (3.3V)", "1"], ["Bajo (GND)", "0"]]), "LEVEL");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#65a30d");
+        this.setTooltip("Colócalo ANTES del bloque 'Entrar en deep sleep', en CONFIGURACION. Permite que un pin despierte al ESP32 mientras duerme. ⚠️ Solo funciona con pines RTC GPIO en ESP32 original y S3 (ej. 32, 33, 34, 35, 25, 26, 27...); NO disponible en ESP32-C3/C6 por limitaciones de hardware.");
+      }
+    };
+
+    Blockly.Blocks["esp32_woke_from_sleep"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🔋 ¿Se despertó de un deep sleep?");
+        this.setOutput(true, "Boolean");
+        this.setColour("#65a30d");
+        this.setTooltip("Verdadero si el programa arrancó porque el ESP32 despertó de un deep sleep. Falso si fue un encendido normal, un reset por botón, etc. Útil para distinguir 'primer arranque' de 'desperté a hacer una medición'.");
       }
     };
 
@@ -1571,6 +1734,137 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
       generator.definitions_["import_time"] = "import time";
       const ms = block.getFieldValue("MS");
       return `time.sleep_ms(${ms})\n`;
+    };
+
+    // ---------- GENERADORES INTERRUPCIONES Y TIMERS ----------
+
+    Blockly.Python.forBlock["esp32_pin_irq"] = function (block, generator) {
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      generator.definitions_["import_micropython_irq"] = "import micropython\nmicropython.alloc_emergency_exception_buf(100)";
+      const pin = block.getFieldValue("PIN");
+      const trigger = block.getFieldValue("TRIGGER");
+      const pull = block.getFieldValue("PULL");
+      let pullArg = "";
+      if (pull === "UP") pullArg = ", Pin.PULL_UP";
+      else if (pull === "DOWN") pullArg = ", Pin.PULL_DOWN";
+      let triggerExpr = "Pin.IRQ_RISING | Pin.IRQ_FALLING";
+      if (trigger === "RISING") triggerExpr = "Pin.IRQ_RISING";
+      else if (trigger === "FALLING") triggerExpr = "Pin.IRQ_FALLING";
+
+      let body = generator.statementToCode(block, "DO");
+      if (body.trim()) {
+        body = body.split("\n").map(line => line ? "    " + line : line).join("\n");
+      } else {
+        body = "    pass\n";
+      }
+
+      const varName = `_pin_irq_${pin}`;
+      let code = `def _irq_deferred_${pin}(arg):\n${body}`;
+      code += `def _irq_handler_${pin}(pin_obj):\n    micropython.schedule(_irq_deferred_${pin}, 0)\n`;
+      code += `${varName} = Pin(${pin}, Pin.IN${pullArg})\n`;
+      code += `${varName}.irq(trigger=${triggerExpr}, handler=_irq_handler_${pin})\n`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_timer_irq"] = function (block, generator) {
+      generator.definitions_["import_machine_timer"] = "from machine import Timer";
+      generator.definitions_["import_micropython_irq"] = "import micropython\nmicropython.alloc_emergency_exception_buf(100)";
+      const id = block.getFieldValue("ID");
+      const period = block.getFieldValue("PERIOD");
+
+      let body = generator.statementToCode(block, "DO");
+      if (body.trim()) {
+        body = body.split("\n").map(line => line ? "    " + line : line).join("\n");
+      } else {
+        body = "    pass\n";
+      }
+
+      let code = `def _timer_deferred_${id}(arg):\n${body}`;
+      code += `def _timer_handler_${id}(t):\n    micropython.schedule(_timer_deferred_${id}, 0)\n`;
+      code += `_timer_${id} = Timer(${id})\n`;
+      code += `_timer_${id}.init(period=${period}, mode=Timer.PERIODIC, callback=_timer_handler_${id})\n`;
+      return code;
+    };
+
+    // ---------- GENERADORES ALMACENAMIENTO (ARCHIVOS / SD) ----------
+
+    Blockly.Python.forBlock["esp32_sd_init"] = function (block, generator) {
+      generator.definitions_["import_sd"] = "import machine, os, sdcard";
+      const id = block.getFieldValue("ID");
+      const sck = block.getFieldValue("SCK");
+      const mosi = block.getFieldValue("MOSI");
+      const miso = block.getFieldValue("MISO");
+      const cs = block.getFieldValue("CS");
+      return `_sd_spi = machine.SPI(${id}, sck=machine.Pin(${sck}), mosi=machine.Pin(${mosi}), miso=machine.Pin(${miso}))
+_sd = sdcard.SDCard(_sd_spi, machine.Pin(${cs}))
+try:
+    os.mount(_sd, "/sd")
+except OSError:
+    pass
+`;
+    };
+
+    Blockly.Python.forBlock["esp32_file_write"] = function (block, generator) {
+      generator.definitions_["import_os_files"] = "import os";
+      const filename = block.getFieldValue("FILENAME");
+      const mode = block.getFieldValue("MODE");
+      const content = generator.valueToCode(block, "CONTENT", ORDER_ATOMIC) || "''";
+      if (mode === "a") {
+        return `with open("${filename}", "a") as _f:\n    _f.write(str(${content}) + "\\n")\n`;
+      }
+      return `with open("${filename}", "w") as _f:\n    _f.write(str(${content}))\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_file_read"] = function (block, generator) {
+      generator.definitions_["import_os_files"] = "import os";
+      generator.definitions_["file_read_func"] =
+`def _archivo_leer(nombre):
+    try:
+        with open(nombre, "r") as f:
+            return f.read()
+    except OSError:
+        return ""`;
+      const filename = block.getFieldValue("FILENAME");
+      return [`_archivo_leer("${filename}")`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_file_exists"] = function (block, generator) {
+      generator.definitions_["import_os_files"] = "import os";
+      generator.definitions_["file_exists_func"] =
+`def _archivo_existe(nombre):
+    try:
+        os.stat(nombre)
+        return True
+    except OSError:
+        return False`;
+      const filename = block.getFieldValue("FILENAME");
+      return [`_archivo_existe("${filename}")`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_file_delete"] = function (block, generator) {
+      generator.definitions_["import_os_files"] = "import os";
+      const filename = block.getFieldValue("FILENAME");
+      return `try:\n    os.remove("${filename}")\nexcept OSError:\n    pass\n`;
+    };
+
+    // ---------- GENERADORES ENERGIA Y DEEP SLEEP ----------
+
+    Blockly.Python.forBlock["esp32_deep_sleep_ms"] = function (block, generator) {
+      generator.definitions_["import_machine_sleep"] = "import machine";
+      const ms = block.getFieldValue("MS");
+      return `machine.deepsleep(${ms})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_deep_sleep_pin_wake"] = function (block, generator) {
+      generator.definitions_["import_esp32_sleep"] = "import esp32, machine";
+      const pin = block.getFieldValue("PIN");
+      const level = block.getFieldValue("LEVEL");
+      return `esp32.wake_on_ext0(pin=machine.Pin(${pin}), level=${level})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_woke_from_sleep"] = function (block, generator) {
+      generator.definitions_["import_machine_sleep"] = "import machine";
+      return ["(machine.reset_cause() == machine.DEEPSLEEP_RESET)", ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_print"] = function (block, generator) {
