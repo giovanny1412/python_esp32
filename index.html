@@ -1396,7 +1396,9 @@ Blockly.Blocks["esp32_pwm_write"] = {
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       const state = block.getFieldValue("STATE");
-      return `Pin(${pin}, Pin.OUT).value(${state})\n`;
+      const varName = `_pin_out_${pin}`;
+      generator.definitions_[`pin_out_${pin}`] = `${varName} = Pin(${pin}, Pin.OUT)`;
+      return `${varName}.value(${state})\n`;
     };
 
     Blockly.Python.forBlock["esp32_digital_read"] = function (block, generator) {
@@ -1406,14 +1408,18 @@ Blockly.Blocks["esp32_pwm_write"] = {
       let pullArg = "";
       if (pull === "UP") pullArg = ", Pin.PULL_UP";
       else if (pull === "DOWN") pullArg = ", Pin.PULL_DOWN";
-      return [`Pin(${pin}, Pin.IN${pullArg}).value()`, ORDER_ATOMIC];
+      const varName = `_pin_in_${pin}`;
+      generator.definitions_[`pin_in_${pin}`] = `${varName} = Pin(${pin}, Pin.IN${pullArg})`;
+      return [`${varName}.value()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_digital_write_value"] = function (block, generator) {
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       const value = generator.valueToCode(block, "VALUE", ORDER_ATOMIC) || "0";
-      return `Pin(${pin}, Pin.OUT).value(${value})\n`;
+      const varName = `_pin_out_${pin}`;
+      generator.definitions_[`pin_out_${pin}`] = `${varName} = Pin(${pin}, Pin.OUT)`;
+      return `${varName}.value(${value})\n`;
     };
 
 Blockly.Python.forBlock["esp32_analog_read"] = function (block, generator) {
