@@ -171,6 +171,11 @@
       <block type="esp32_i2s_mic_init"><field name="ID">0</field><field name="SCK">14</field><field name="WS">15</field><field name="SD">32</field><field name="RATE">16000</field></block>
       <block type="esp32_i2s_mic_read_level"></block>
     </category>
+    <category name="🔊 Amplificador MAX98357A" colour="#be123c">
+      <block type="esp32_max98357_init"><field name="ID">1</field><field name="BCLK">26</field><field name="WS">25</field><field name="DIN">22</field><field name="RATE">16000</field></block>
+      <block type="esp32_max98357_tone"><field name="FREQ">440</field><field name="DURATION">500</field></block>
+      <block type="esp32_max98357_play_wav"><field name="FILENAME">audio.wav</field></block>
+    </category>
     <category name="🖥️ Pantalla OLED 128x64" colour="#0891b2">
       <block type="esp32_oled_init"></block>
       <block type="esp32_oled_clear"></block>
@@ -1221,6 +1226,57 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setOutput(true, "Number");
         this.setColour("#db2777");
         this.setTooltip("Requiere el microfono I2S inicializado. Retorna la amplitud pico del ultimo bloque de audio capturado (0 a 32767).");
+      }
+    };
+
+    // ---------- BLOQUES AMPLIFICADOR MAX98357A (I2S) ----------
+
+    Blockly.Blocks["esp32_max98357_init"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔊 Inicializar amplificador MAX98357A  ID:")
+          .appendField(new Blockly.FieldDropdown([["0", "0"], ["1", "1"]]), "ID");
+        this.appendDummyInput()
+          .appendField("BCLK:")
+          .appendField(new Blockly.FieldNumber(26, 0, 48, 1), "BCLK")
+          .appendField("LRC/WS:")
+          .appendField(new Blockly.FieldNumber(25, 0, 48, 1), "WS")
+          .appendField("DIN:")
+          .appendField(new Blockly.FieldNumber(22, 0, 48, 1), "DIN");
+        this.appendDummyInput()
+          .appendField("frecuencia de muestreo (Hz):")
+          .appendField(new Blockly.FieldNumber(16000, 8000, 48000, 1), "RATE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#be123c");
+        this.setTooltip("Colocalo en CONFIGURACION. BCLK=reloj de bits, LRC/WS=seleccion de canal, DIN=datos hacia el amplificador. El pin SD del modulo (shutdown/gain) normalmente va con una resistencia a 3.3V para quedar siempre activo; si lo conectaste a un GPIO, usa el bloque 'Escribir pin' para encenderlo/apagarlo. Usa un ID de bus I2S distinto al del microfono si usas ambos a la vez (0 y 1).");
+      }
+    };
+
+    Blockly.Blocks["esp32_max98357_tone"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔊 Reproducir tono")
+          .appendField(new Blockly.FieldNumber(440, 20, 20000, 1), "FREQ")
+          .appendField("Hz durante")
+          .appendField(new Blockly.FieldNumber(500, 1, 60000, 1), "DURATION")
+          .appendField("ms");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#be123c");
+        this.setTooltip("Requiere el amplificador inicializado. Genera una onda senoidal y la reproduce por el MAX98357A durante el tiempo indicado (bloquea el programa mientras suena).");
+      }
+    };
+
+    Blockly.Blocks["esp32_max98357_play_wav"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🔊 Reproducir audio WAV:")
+          .appendField(new Blockly.FieldTextInput("audio.wav"), "FILENAME");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#be123c");
+        this.setTooltip("Requiere el amplificador inicializado. Reproduce un archivo .wav ya guardado en la memoria del ESP32 (debes subirlo antes con Thonny u otra herramienta, con exactamente este nombre en la raíz). El archivo debe ser MONO, PCM de 16 bits, y con la MISMA frecuencia de muestreo configurada en 'Inicializar amplificador' (ej. 16000 Hz). En Audacity: Archivo > Exportar > WAV, Canales=Mono, Formato=16-bit PCM, y cambia la frecuencia del proyecto (abajo a la izquierda) a la misma que configuraste. Es una llamada bloqueante: el programa espera a que termine de sonar.");
       }
     };
 
@@ -2288,6 +2344,65 @@ _mic_buf = bytearray(4096)
             pico = v
     return pico`;
       return ["_leer_mic_nivel()", ORDER_ATOMIC];
+    };
+
+    // ---------- GENERADORES AMPLIFICADOR MAX98357A (I2S) ----------
+
+    Blockly.Python.forBlock["esp32_max98357_init"] = function (block, generator) {
+      generator.definitions_["import_i2s_amp"] = "from machine import I2S, Pin";
+      const id = block.getFieldValue("ID");
+      const bclk = block.getFieldValue("BCLK");
+      const ws = block.getFieldValue("WS");
+      const din = block.getFieldValue("DIN");
+      const rate = block.getFieldValue("RATE");
+      return `_amp = I2S(${id}, sck=Pin(${bclk}), ws=Pin(${ws}), sd=Pin(${din}), mode=I2S.TX, bits=16, format=I2S.MONO, rate=${rate}, ibuf=4000)
+_amp_rate = ${rate}
+`;
+    };
+
+    Blockly.Python.forBlock["esp32_max98357_tone"] = function (block, generator) {
+      generator.definitions_["import_math_audio"] = "import math";
+      generator.definitions_["import_array_audio"] = "import array";
+      generator.definitions_["max98357_tono_func"] =
+`def _max98357_tono(frecuencia, duracion_ms):
+    ciclo = _amp_rate // frecuencia
+    if ciclo < 2:
+        ciclo = 2
+    buf = array.array("h", [0] * ciclo)
+    rango = (2 ** 15) // 8
+    for i in range(ciclo):
+        buf[i] = int(rango * math.sin(2 * math.pi * i / ciclo))
+    repeticiones = int(frecuencia * duracion_ms / 1000)
+    if repeticiones < 1:
+        repeticiones = 1
+    for _ in range(repeticiones):
+        _amp.write(buf)`;
+      const freq = block.getFieldValue("FREQ");
+      const dur = block.getFieldValue("DURATION");
+      return `_max98357_tono(${freq}, ${dur})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_max98357_play_wav"] = function (block, generator) {
+      generator.definitions_["max98357_play_wav_func"] =
+`def _max98357_reproducir_wav(nombre_archivo):
+    try:
+        f = open(nombre_archivo, "rb")
+    except OSError:
+        print("No se encontro el archivo:", nombre_archivo)
+        return
+    f.seek(44)  # omite el encabezado WAV estandar (44 bytes, PCM mono 16 bits)
+    buf = bytearray(1024)
+    while True:
+        n = f.readinto(buf)
+        if not n:
+            break
+        if n < len(buf):
+            _amp.write(buf[:n])
+        else:
+            _amp.write(buf)
+    f.close()`;
+      const filename = block.getFieldValue("FILENAME");
+      return `_max98357_reproducir_wav("${filename}")\n`;
     };
 
     // ---------- GENERADORES PANTALLA OLED 128x64 ----------
