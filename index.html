@@ -2241,6 +2241,15 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       const pin = block.getFieldValue("PIN");
       const angle = generator.valueToCode(block, "ANGLE", ORDER_ATOMIC) || '90';
       generator.definitions_[`servo_${pin}_init`] = `_servo_${pin} = PWM(Pin(${pin}), freq=50)`;
+      // Si el angulo es un numero fijo (no una variable/expresion), calculamos el
+      // duty cycle una sola vez aqui en JavaScript y lo dejamos como constante en
+      // el codigo generado: el ESP32 no hace NINGUNA cuenta en tiempo de ejecucion.
+      if (/^-?\d+(\.\d+)?$/.test(angle.trim())) {
+        const duty = Math.trunc(1638 + (parseFloat(angle) * 6554) / 180);
+        return `_servo_${pin}.duty_u16(${duty})\n`;
+      }
+      // Si viene de una variable o expresion, el valor solo se conoce en tiempo de
+      // ejecucion, asi que no queda otra que calcularlo cada vez (con enteros).
       return `_servo_${pin}.duty_u16(int(1638 + (${angle} * 6554) // 180))\n`;
     };
 
@@ -2250,6 +2259,10 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       const pin = block.getFieldValue("PIN");
       const speed = generator.valueToCode(block, "SPEED", ORDER_ATOMIC) || '0';
       generator.definitions_[`servo360_${pin}_init`] = `_servo360_${pin} = PWM(Pin(${pin}), freq=50)`;
+      if (/^-?\d+(\.\d+)?$/.test(speed.trim())) {
+        const duty = Math.trunc(4915 + (parseFloat(speed) * 16.38));
+        return `_servo360_${pin}.duty_u16(${duty})\n`;
+      }
       return `_servo360_${pin}.duty_u16(int(4915 + (${speed} * 16.38)))\n`;
     };
 
@@ -2867,10 +2880,11 @@ _amp_rate = ${rate}
     // ---------- GENERADORES NEOPIXEL ----------
 
     Blockly.Python.forBlock["esp32_neopixel_init"] = function (block, generator) {
-      generator.definitions_["import_neopixel"] = "import neopixel\nfrom machine import Pin";
+      generator.definitions_["import_neopixel"] = "import neopixel";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       const count = block.getFieldValue("COUNT");
-      return `_np = neopixel.NeoPixel(Pin(${pin}), ${count})\n`;
+      return `pin_rgb = Pin(${pin}, Pin.OUT)\n_np = neopixel.NeoPixel(pin_rgb, ${count})\n`;
     };
 
     Blockly.Python.forBlock["esp32_neopixel_set"] = function (block, generator) {
