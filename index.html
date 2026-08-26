@@ -2100,10 +2100,20 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
 
     // ---------- GENERADORES SENSORES DIGITALES ----------
 
-    Blockly.Python.forBlock["esp32_sensor_pir"] = function (block, generator) {
+    function _sensorDigitalSetup(generator) {
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      generator.definitions_["sensor_digital_state"] = "_sensor_pins = {}";
+      generator.definitions_["sensor_digital_func"] =
+`def _leer_sensor_digital(pin):
+    if pin not in _sensor_pins:
+        _sensor_pins[pin] = Pin(pin, Pin.IN)
+    return _sensor_pins[pin].value()`;
+    }
+
+    Blockly.Python.forBlock["esp32_sensor_pir"] = function (block, generator) {
+      _sensorDigitalSetup(generator);
       const pin = block.getFieldValue("PIN");
-      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+      return [`_leer_sensor_digital(${pin})`, ORDER_ATOMIC];
     };
 
     // ---------- GENERADORES SENSOR INFRARROJO (IR) ----------
@@ -2185,33 +2195,33 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
     };
 
     Blockly.Python.forBlock["esp32_sensor_sound_digital"] = function (block, generator) {
-      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      _sensorDigitalSetup(generator);
       const pin = block.getFieldValue("PIN");
-      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+      return [`_leer_sensor_digital(${pin})`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_obstacle"] = function (block, generator) {
-      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      _sensorDigitalSetup(generator);
       const pin = block.getFieldValue("PIN");
-      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+      return [`_leer_sensor_digital(${pin})`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_magnetic"] = function (block, generator) {
-      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      _sensorDigitalSetup(generator);
       const pin = block.getFieldValue("PIN");
-      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+      return [`_leer_sensor_digital(${pin})`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_flame"] = function (block, generator) {
-      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      _sensorDigitalSetup(generator);
       const pin = block.getFieldValue("PIN");
-      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+      return [`_leer_sensor_digital(${pin})`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_limit_switch"] = function (block, generator) {
-      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      _sensorDigitalSetup(generator);
       const pin = block.getFieldValue("PIN");
-      return [`Pin(${pin}, Pin.IN).value()`, ORDER_ATOMIC];
+      return [`_leer_sensor_digital(${pin})`, ORDER_ATOMIC];
     };
 
     // ---------- GENERADORES SERVOMOTORES ----------
