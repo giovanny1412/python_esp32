@@ -1685,7 +1685,8 @@ Blockly.Blocks["esp32_pwm_write"] = {
     };
 
 Blockly.Python.forBlock["esp32_analog_read"] = function (block, generator) {
-  generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+  generator.definitions_["import_machine_adc"] = "from machine import ADC";
+  generator.definitions_["import_machine_pin"] = "from machine import Pin";
   const pin = block.getFieldValue("PIN");
   
   // Crea la instancia global con atenuación de 11 dB para leer de 0V a 3.3V
@@ -1701,14 +1702,16 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
   // Lee la variable o bloque conectado, o usa 0 por defecto si está vacío
   var duty = generator.valueToCode(block, "DUTY", generator.ORDER_ATOMIC) || "0";
 
-  generator.definitions_["import_pin"] = "from machine import Pin, PWM";
+  generator.definitions_["import_machine_pwm"] = "from machine import PWM";
+  generator.definitions_["import_machine_pin"] = "from machine import Pin";
   generator.definitions_[`pwm_init_${pin}`] = `_pwm_${pin} = PWM(Pin(${pin}), freq=${freq})`;
 
   return `_pwm_${pin}.duty_u16(int(${duty}))\n`;
 };
 
     Blockly.Python.forBlock["esp32_touch_read"] = function (block, generator) {
-      generator.definitions_["import_machine_touchpad"] = "from machine import TouchPad, Pin";
+      generator.definitions_["import_machine_touchpad"] = "from machine import TouchPad";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       const varName = `_touch_${pin}`;
       generator.definitions_[`touch_init_${pin}`] = `${varName} = TouchPad(Pin(${pin}))`;
@@ -1716,7 +1719,8 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
     };
 
     Blockly.Python.forBlock["esp32_touch_touched"] = function (block, generator) {
-      generator.definitions_["import_machine_touchpad"] = "from machine import TouchPad, Pin";
+      generator.definitions_["import_machine_touchpad"] = "from machine import TouchPad";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       const threshold = block.getFieldValue("THRESHOLD");
       const varName = `_touch_${pin}`;
@@ -2026,31 +2030,36 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
     // ---------- GENERADORES SENSORES ANALOGICOS ----------
 
     Blockly.Python.forBlock["esp32_sensor_ldr"] = function (block, generator) {
-      generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+      generator.definitions_["import_machine_adc"] = "from machine import ADC";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_potentiometer"] = function (block, generator) {
-      generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+      generator.definitions_["import_machine_adc"] = "from machine import ADC";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_rain"] = function (block, generator) {
-      generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+      generator.definitions_["import_machine_adc"] = "from machine import ADC";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_sound"] = function (block, generator) {
-      generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+      generator.definitions_["import_machine_adc"] = "from machine import ADC";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_joystick"] = function (block, generator) {
-      generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+      generator.definitions_["import_machine_adc"] = "from machine import ADC";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pinX = block.getFieldValue("PIN_X");
       const pinY = block.getFieldValue("PIN_Y");
       const pinBtn = block.getFieldValue("PIN_BTN");
@@ -2227,15 +2236,17 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
     // ---------- GENERADORES SERVOMOTORES ----------
 
     Blockly.Python.forBlock["esp32_servo_180"] = function (block, generator) {
-      generator.definitions_["import_machine_pwm"] = "from machine import PWM, Pin";
+      generator.definitions_["import_machine_pwm"] = "from machine import PWM";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       const angle = generator.valueToCode(block, "ANGLE", ORDER_ATOMIC) || '90';
       generator.definitions_[`servo_${pin}_init`] = `_servo_${pin} = PWM(Pin(${pin}), freq=50)`;
-      return `_servo_${pin}.duty_u16(int(1638 + (${angle} / 180) * 6554))\n`;
+      return `_servo_${pin}.duty_u16(int(1638 + (${angle} * 6554) // 180))\n`;
     };
 
     Blockly.Python.forBlock["esp32_servo_360"] = function (block, generator) {
-      generator.definitions_["import_machine_pwm"] = "from machine import PWM, Pin";
+      generator.definitions_["import_machine_pwm"] = "from machine import PWM";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       const speed = generator.valueToCode(block, "SPEED", ORDER_ATOMIC) || '0';
       generator.definitions_[`servo360_${pin}_init`] = `_servo360_${pin} = PWM(Pin(${pin}), freq=50)`;
@@ -2759,7 +2770,8 @@ _amp_rate = ${rate}
     // ---------- GENERADORES SENSORES DE GAS (MQ) ----------
 
     Blockly.Python.forBlock["esp32_sensor_mq"] = function (block, generator) {
-      generator.definitions_["import_machine_adc"] = "from machine import ADC, Pin";
+      generator.definitions_["import_machine_adc"] = "from machine import ADC";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
       return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
     };
@@ -2767,7 +2779,8 @@ _amp_rate = ${rate}
     // ---------- GENERADORES MOTORES DC Y PASOS ----------
 
     Blockly.Python.forBlock["esp32_motor_dc"] = function (block, generator) {
-      generator.definitions_["import_machine_pwm"] = "from machine import PWM, Pin";
+      generator.definitions_["import_machine_pwm"] = "from machine import PWM";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       generator.definitions_["motor_dc_state"] = "_motor_pwms = {}\n_motor_pins = {}";
       generator.definitions_["motor_dc_func"] =
 `def _motor_dc(in1, in2, en, speed):
