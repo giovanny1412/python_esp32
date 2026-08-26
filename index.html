@@ -2758,13 +2758,15 @@ _amp_rate = ${rate}
 
     Blockly.Python.forBlock["esp32_motor_dc"] = function (block, generator) {
       generator.definitions_["import_machine_pwm"] = "from machine import PWM, Pin";
-      generator.definitions_["motor_dc_state"] = "_motor_pwms = {}";
+      generator.definitions_["motor_dc_state"] = "_motor_pwms = {}\n_motor_pins = {}";
       generator.definitions_["motor_dc_func"] =
 `def _motor_dc(in1, in2, en, speed):
     if en not in _motor_pwms:
         _motor_pwms[en] = PWM(Pin(en), freq=1000)
-    p1 = Pin(in1, Pin.OUT)
-    p2 = Pin(in2, Pin.OUT)
+    key = (in1, in2)
+    if key not in _motor_pins:
+        _motor_pins[key] = [Pin(in1, Pin.OUT), Pin(in2, Pin.OUT)]
+    p1, p2 = _motor_pins[key]
     pwm = _motor_pwms[en]
     speed = max(-100, min(100, speed))
     if speed > 0:
@@ -2787,10 +2789,13 @@ _amp_rate = ${rate}
     Blockly.Python.forBlock["esp32_stepper_stepdir"] = function (block, generator) {
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       generator.definitions_["import_time"] = "import time";
+      generator.definitions_["stepper_stepdir_state"] = "_stepper_pins = {}";
       generator.definitions_["stepper_stepdir_func"] =
 `def _stepper_stepdir(step_pin, dir_pin, pasos, delay_us):
-    step = Pin(step_pin, Pin.OUT)
-    direc = Pin(dir_pin, Pin.OUT)
+    key = (step_pin, dir_pin)
+    if key not in _stepper_pins:
+        _stepper_pins[key] = [Pin(step_pin, Pin.OUT), Pin(dir_pin, Pin.OUT)]
+    step, direc = _stepper_pins[key]
     direc.value(1 if pasos >= 0 else 0)
     for _ in range(abs(pasos)):
         step.value(1)
