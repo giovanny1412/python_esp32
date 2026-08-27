@@ -2849,12 +2849,14 @@ _amp_rate = ${rate}
       return `_stepper_stepdir(${stepPin}, ${dirPin}, ${steps}, ${delay})\n`;
     };
 
-    Blockly.Python.forBlock["esp32_stepper_28byj"] = function (block, generator) {
-      generator.definitions_["import_machine_pin"] = "from machine import Pin";
-      generator.definitions_["import_time"] = "import time";
-      generator.definitions_["stepper_28byj_state"] = "_stepper28_pins = {}\n_stepper28_idx = {}";
-      generator.definitions_["stepper_28byj_func"] =
+Blockly.Python.forBlock["esp32_stepper_28byj"] = function (block, generator) {
+  generator.definitions_["import_machine_pin"] = "from machine import Pin";
+  generator.definitions_["import_time"] = "import time";
+  generator.definitions_["stepper_28byj_state"] = "_stepper28_pins = {}\n_stepper28_idx = {}";
+  generator.definitions_["stepper_28byj_func"] =
 `def _stepper_28byj(in1, in2, in3, in4, pasos, delay_ms):
+    if pasos == 0:
+        return
     key = (in1, in2, in3, in4)
     if key not in _stepper28_pins:
         _stepper28_pins[key] = [Pin(in1, Pin.OUT), Pin(in2, Pin.OUT), Pin(in3, Pin.OUT), Pin(in4, Pin.OUT)]
@@ -2866,23 +2868,26 @@ _amp_rate = ${rate}
     ]
     paso_dir = 1 if pasos >= 0 else -1
     idx = _stepper28_idx[key]
+    delay_us = int(delay_ms * 1000)
     for _ in range(abs(pasos)):
         idx = (idx + paso_dir) % 8
         fase = secuencia[idx]
         for i in range(4):
             pines[i].value(fase[i])
-        time.sleep_ms(delay_ms)
+        time.sleep_us(delay_us)
     _stepper28_idx[key] = idx
     for p in pines:
         p.value(0)`;
-      const in1 = block.getFieldValue("IN1");
-      const in2 = block.getFieldValue("IN2");
-      const in3 = block.getFieldValue("IN3");
-      const in4 = block.getFieldValue("IN4");
-      const delayMs = block.getFieldValue("DELAY_MS");
-      const steps = generator.valueToCode(block, "STEPS", ORDER_ATOMIC) || '0';
-      return `_stepper_28byj(${in1}, ${in2}, ${in3}, ${in4}, ${steps}, ${delayMs})\n`;
-    };
+
+  const in1 = block.getFieldValue("IN1");
+  const in2 = block.getFieldValue("IN2");
+  const in3 = block.getFieldValue("IN3");
+  const in4 = block.getFieldValue("IN4");
+  const delayMs = block.getFieldValue("DELAY_MS");
+  const steps = generator.valueToCode(block, "STEPS", generator.ORDER_ATOMIC) || '0';
+
+  return `_stepper_28byj(${in1}, ${in2}, ${in3}, ${in4}, ${steps}, ${delayMs})\n`;
+};
 
     // ---------- GENERADORES NEOPIXEL ----------
 
