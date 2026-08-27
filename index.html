@@ -204,7 +204,7 @@
     <category name="🔧 Motores DC y Pasos" colour="#dc2626">
       <block type="esp32_motor_dc"><field name="IN1">26</field><field name="IN2">27</field><field name="EN">14</field></block>
       <block type="esp32_stepper_stepdir"><field name="STEP">25</field><field name="DIR">26</field></block>
-      <block type="esp32_stepper_28byj"><field name="IN1">19</field><field name="IN2">18</field><field name="IN3">5</field><field name="IN4">17</field></block>
+      <block type="esp32_stepper_28byj"><field name="IN1">19</field><field name="IN2">18</field><field name="IN3">5</field><field name="IN4">17</field><field name="DELAY_MS">2</field></block>
     </category>
     <category name="💡 NeoPixel" colour="#ec4899">
       <block type="esp32_neopixel_init"><field name="PIN">4</field><field name="COUNT">8</field></block>
@@ -1564,10 +1564,14 @@ Blockly.Blocks["esp32_pwm_write"] = {
           .appendField("IN4:")
           .appendField(new Blockly.FieldNumber(17, 0, 48, 1), "IN4");
         this.appendValueInput("STEPS").appendField("pasos (+/-):").setCheck("Number");
+        this.appendDummyInput()
+          .appendField("retardo entre pasos:")
+          .appendField(new Blockly.FieldNumber(2, 1, 100, 1), "DELAY_MS")
+          .appendField("ms");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour("#dc2626");
-        this.setTooltip("Motor paso a paso 28BYJ-48 con placa driver ULN2003. Pasos positivos giran en un sentido, negativos en el otro.");
+        this.setTooltip("Motor paso a paso 28BYJ-48 con placa driver ULN2003. Pasos positivos giran en un sentido, negativos en el otro. El retardo entre pasos controla la velocidad: más bajo = más rápido, pero si es demasiado bajo el motor no tiene torque suficiente y puede saltarse pasos o vibrar sin girar (2-5 ms suele ser un buen rango). La posición de fase se recuerda entre llamadas, así que puedes alternar dirección sin que el motor dé un tirón brusco.");
       }
     };
 
@@ -2848,33 +2852,36 @@ _amp_rate = ${rate}
     Blockly.Python.forBlock["esp32_stepper_28byj"] = function (block, generator) {
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       generator.definitions_["import_time"] = "import time";
-      generator.definitions_["stepper_28byj_state"] = "_stepper28_pins = {}";
+      generator.definitions_["stepper_28byj_state"] = "_stepper28_pins = {}\n_stepper28_idx = {}";
       generator.definitions_["stepper_28byj_func"] =
-`def _stepper_28byj(in1, in2, in3, in4, pasos):
+`def _stepper_28byj(in1, in2, in3, in4, pasos, delay_ms):
     key = (in1, in2, in3, in4)
     if key not in _stepper28_pins:
         _stepper28_pins[key] = [Pin(in1, Pin.OUT), Pin(in2, Pin.OUT), Pin(in3, Pin.OUT), Pin(in4, Pin.OUT)]
+        _stepper28_idx[key] = 0
     pines = _stepper28_pins[key]
     secuencia = [
         [1, 0, 0, 0], [1, 1, 0, 0], [0, 1, 0, 0], [0, 1, 1, 0],
         [0, 0, 1, 0], [0, 0, 1, 1], [0, 0, 0, 1], [1, 0, 0, 1]
     ]
     paso_dir = 1 if pasos >= 0 else -1
-    idx = 0
+    idx = _stepper28_idx[key]
     for _ in range(abs(pasos)):
         idx = (idx + paso_dir) % 8
         fase = secuencia[idx]
         for i in range(4):
             pines[i].value(fase[i])
-        time.sleep_ms(2)
+        time.sleep_ms(delay_ms)
+    _stepper28_idx[key] = idx
     for p in pines:
         p.value(0)`;
       const in1 = block.getFieldValue("IN1");
       const in2 = block.getFieldValue("IN2");
       const in3 = block.getFieldValue("IN3");
       const in4 = block.getFieldValue("IN4");
+      const delayMs = block.getFieldValue("DELAY_MS");
       const steps = generator.valueToCode(block, "STEPS", ORDER_ATOMIC) || '0';
-      return `_stepper_28byj(${in1}, ${in2}, ${in3}, ${in4}, ${steps})\n`;
+      return `_stepper_28byj(${in1}, ${in2}, ${in3}, ${in4}, ${steps}, ${delayMs})\n`;
     };
 
     // ---------- GENERADORES NEOPIXEL ----------
