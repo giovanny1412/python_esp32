@@ -130,6 +130,7 @@
       <block type="esp32_sensor_rain"><field name="PIN">32</field></block>
       <block type="esp32_sensor_sound"><field name="PIN">33</field></block>
       <block type="esp32_sensor_joystick"><field name="PIN_X">34</field><field name="PIN_Y">35</field><field name="PIN_BTN">25</field></block>
+      <block type="esp32_sensor_tds"><field name="PIN">32</field><field name="TEMP">25</field></block>
     </category>
     <category name="🔴 Sensores Digitales" colour="#ef4444">
       <block type="esp32_sensor_pir"><field name="PIN">14</field></block>
@@ -901,6 +902,19 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setOutput(true, null);
         this.setColour("#10b981");
         this.setTooltip("Lee un joystick analogico. Retorna (x, y, boton).");
+      }
+    };
+
+    Blockly.Blocks["esp32_sensor_tds"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("💧 Leer sensor TDS (calidad del agua) pin:")
+          .appendField(new Blockly.FieldNumber(32, 0, 48, 1), "PIN")
+          .appendField("temperatura del agua (°C):")
+          .appendField(new Blockly.FieldNumber(25, -10, 100, 1), "TEMP");
+        this.setOutput(true, "Number");
+        this.setColour("#10b981");
+        this.setTooltip("Devuelve el TDS (sólidos disueltos totales) en ppm, una medida común de pureza/calidad del agua. Usa un pin ADC (32-39 recomendados). La temperatura compensa la lectura (el agua caliente conduce más electricidad) — si no mides la temperatura del agua, deja 25°C y el resultado será aproximado pero usable. Referencia orientativa: agua muy pura <50 ppm, agua potable normal 50-300 ppm, agua no apta para consumo >500 ppm.");
       }
     };
 
@@ -2210,28 +2224,32 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       generator.definitions_["import_machine_adc"] = "from machine import ADC";
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
-      return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
+      generator.definitions_[`adc_init_${pin}`] = `_adc_${pin} = ADC(Pin(${pin}))\n_adc_${pin}.atten(ADC.ATTN_11DB)`;
+      return [`_adc_${pin}.read_u16()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_potentiometer"] = function (block, generator) {
       generator.definitions_["import_machine_adc"] = "from machine import ADC";
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
-      return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
+      generator.definitions_[`adc_init_${pin}`] = `_adc_${pin} = ADC(Pin(${pin}))\n_adc_${pin}.atten(ADC.ATTN_11DB)`;
+      return [`_adc_${pin}.read_u16()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_rain"] = function (block, generator) {
       generator.definitions_["import_machine_adc"] = "from machine import ADC";
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
-      return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
+      generator.definitions_[`adc_init_${pin}`] = `_adc_${pin} = ADC(Pin(${pin}))\n_adc_${pin}.atten(ADC.ATTN_11DB)`;
+      return [`_adc_${pin}.read_u16()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_sound"] = function (block, generator) {
       generator.definitions_["import_machine_adc"] = "from machine import ADC";
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
-      return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
+      generator.definitions_[`adc_init_${pin}`] = `_adc_${pin} = ADC(Pin(${pin}))\n_adc_${pin}.atten(ADC.ATTN_11DB)`;
+      return [`_adc_${pin}.read_u16()`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["esp32_sensor_joystick"] = function (block, generator) {
@@ -2240,8 +2258,23 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       const pinX = block.getFieldValue("PIN_X");
       const pinY = block.getFieldValue("PIN_Y");
       const pinBtn = block.getFieldValue("PIN_BTN");
-      generator.definitions_["joystick_init"] = `_adc_x = ADC(Pin(${pinX}))\n_adc_y = ADC(Pin(${pinY}))\n_btn_js = Pin(${pinBtn}, Pin.IN, Pin.PULL_UP)`;
+      generator.definitions_["joystick_init"] = `_adc_x = ADC(Pin(${pinX}))\n_adc_x.atten(ADC.ATTN_11DB)\n_adc_y = ADC(Pin(${pinY}))\n_adc_y.atten(ADC.ATTN_11DB)\n_btn_js = Pin(${pinBtn}, Pin.IN, Pin.PULL_UP)`;
       return [`(_adc_x.read_u16(), _adc_y.read_u16(), 1 - _btn_js.value())`, ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_sensor_tds"] = function (block, generator) {
+      generator.definitions_["import_machine_adc"] = "from machine import ADC";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
+      generator.definitions_["tds_func"] =
+`def _leer_tds(valor_crudo, temp):
+    voltaje = (valor_crudo / 65535) * 3.3
+    coef_comp = 1.0 + 0.02 * (temp - 25.0)
+    voltaje_comp = voltaje / coef_comp
+    return (133.42 * voltaje_comp ** 3 - 255.86 * voltaje_comp ** 2 + 857.39 * voltaje_comp) * 0.5`;
+      const pin = block.getFieldValue("PIN");
+      const temp = block.getFieldValue("TEMP");
+      generator.definitions_[`adc_init_${pin}`] = `_adc_${pin} = ADC(Pin(${pin}))\n_adc_${pin}.atten(ADC.ATTN_11DB)`;
+      return [`_leer_tds(_adc_${pin}.read_u16(), ${temp})`, ORDER_ATOMIC];
     };
 
     Blockly.Python.forBlock["math_map"] = function (block, generator) {
@@ -2963,7 +2996,8 @@ _amp_rate = ${rate}
       generator.definitions_["import_machine_adc"] = "from machine import ADC";
       generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const pin = block.getFieldValue("PIN");
-      return [`ADC(Pin(${pin})).read_u16()`, ORDER_ATOMIC];
+      generator.definitions_[`adc_init_${pin}`] = `_adc_${pin} = ADC(Pin(${pin}))\n_adc_${pin}.atten(ADC.ATTN_11DB)`;
+      return [`_adc_${pin}.read_u16()`, ORDER_ATOMIC];
     };
 
     // ---------- GENERADORES MOTORES DC Y PASOS ----------
