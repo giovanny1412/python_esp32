@@ -117,6 +117,13 @@
       <block type="esp32_ble_scan"></block>
       <block type="esp32_ble_stop_scan"></block>
     </category>
+    <category name="📡 ESP-NOW" colour="#7c3aed">
+      <block type="esp32_espnow_init"></block>
+      <block type="esp32_espnow_add_peer"><field name="MAC">AA:BB:CC:DD:EE:FF</field></block>
+      <block type="esp32_espnow_send"><field name="MAC">AA:BB:CC:DD:EE:FF</field></block>
+      <block type="esp32_espnow_on_receive"></block>
+      <block type="esp32_espnow_my_mac"></block>
+    </category>
     <category name="🌡️ Sensores Analógicos" colour="#10b981">
       <block type="esp32_sensor_ldr"><field name="PIN">34</field></block>
       <block type="esp32_sensor_potentiometer"><field name="PIN">35</field></block>
@@ -245,6 +252,44 @@
       <block type="text_join"></block>
     </category>
     <category name="🧮 Variables" custom="VARIABLE" colour="#a55ba0"></category>
+    <category name="📃 Listas" colour="#5b5ba5">
+      <block type="lists_create_with">
+        <mutation items="3"></mutation>
+      </block>
+      <block type="lists_repeat">
+        <value name="NUM"><shadow type="math_number"><field name="NUM">5</field></shadow></value>
+      </block>
+      <block type="lists_length"></block>
+      <block type="lists_isEmpty"></block>
+      <block type="lists_indexOf">
+        <field name="END">FIRST</field>
+      </block>
+      <block type="lists_getIndex">
+        <mutation statement="false" at="true"></mutation>
+        <field name="MODE">GET</field>
+        <field name="WHERE">FROM_START</field>
+      </block>
+      <block type="lists_setIndex">
+        <mutation at="true"></mutation>
+        <field name="MODE">SET</field>
+        <field name="WHERE">FROM_START</field>
+      </block>
+      <block type="lists_getSublist">
+        <mutation at1="true" at2="true"></mutation>
+        <field name="WHERE1">FROM_START</field>
+        <field name="WHERE2">FROM_START</field>
+      </block>
+      <block type="lists_sort">
+        <field name="TYPE">NUMERIC</field>
+        <field name="DIRECTION">1</field>
+      </block>
+      <block type="lists_reverse"></block>
+      <block type="lists_split">
+        <mutation mode="SPLIT"></mutation>
+        <field name="MODE">SPLIT</field>
+        <value name="DELIM"><shadow type="text"><field name="TEXT">,</field></shadow></value>
+      </block>
+    </category>
     <category name="⚙️ Funciones" custom="PROCEDURE" colour="#9a5ba5"></category>
     <category name="🌐 Servidor Web" colour="#3b82f6">
       <block type="esp32_web_init"><field name="PORT">80</field></block>
@@ -732,6 +777,67 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour("#3b82f6");
+      }
+    };
+
+    // ---------- BLOQUES ESP-NOW ----------
+
+    Blockly.Blocks["esp32_espnow_init"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📡 Inicializar ESP-NOW");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#7c3aed");
+        this.setTooltip("Colócalo en CONFIGURACION, una sola vez. Activa el WiFi en modo estación (sin conectarse a ninguna red) y prepara ESP-NOW para enviar/recibir. Si también usas el bloque 'Conectar WiFi' en el mismo programa, ESP-NOW sigue funcionando igual mientras esté conectado.");
+      }
+    };
+
+    Blockly.Blocks["esp32_espnow_add_peer"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📡 Agregar dispositivo ESP-NOW  MAC:")
+          .appendField(new Blockly.FieldTextInput("AA:BB:CC:DD:EE:FF"), "MAC");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#7c3aed");
+        this.setTooltip("Colócalo en CONFIGURACION, después de 'Inicializar ESP-NOW'. Registra la dirección MAC del otro ESP32 al que le vas a enviar mensajes (usa el bloque 'Obtener mi dirección MAC' en ESA otra placa para saber cuál poner aquí). Para enviarle a TODOS los ESP32 con ESP-NOW activo sin registrar cada uno, usa la MAC especial FF:FF:FF:FF:FF:FF (broadcast).");
+      }
+    };
+
+    Blockly.Blocks["esp32_espnow_send"] = {
+      init: function () {
+        this.appendValueInput("MSG")
+          .appendField("📡 Enviar por ESP-NOW a MAC:")
+          .appendField(new Blockly.FieldTextInput("AA:BB:CC:DD:EE:FF"), "MAC")
+          .appendField("mensaje:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#7c3aed");
+        this.setTooltip("La MAC destino debe haber sido agregada antes con 'Agregar dispositivo ESP-NOW' (o ser FF:FF:FF:FF:FF:FF para enviar a todos). El mensaje puede ser texto o número, se convierte a texto automáticamente. Tamaño máximo por mensaje: 250 bytes.");
+      }
+    };
+
+    Blockly.Blocks["esp32_espnow_on_receive"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("📡 Cuando llegue un mensaje ESP-NOW  remitente:")
+          .appendField(new Blockly.FieldVariable("mac_remitente"), "VAR_MAC")
+          .appendField("mensaje:")
+          .appendField(new Blockly.FieldVariable("mensaje_recibido"), "VAR_MSG");
+        this.appendStatementInput("DO").appendField("hacer:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#7c3aed");
+        this.setTooltip("Colócalo en CONFIGURACION (se registra una sola vez). Cada vez que otro ESP32 te mande un mensaje por ESP-NOW, este bloque se ejecuta automáticamente: guarda quién lo mandó (como texto MAC 'AA:BB:CC:...') en la primera variable, y el contenido del mensaje (como texto) en la segunda, y luego corre el código de 'hacer'.");
+      }
+    };
+
+    Blockly.Blocks["esp32_espnow_my_mac"] = {
+      init: function () {
+        this.appendDummyInput().appendField("📡 Obtener mi dirección MAC");
+        this.setOutput(true, "String");
+        this.setColour("#7c3aed");
+        this.setTooltip("Devuelve la dirección MAC de esta placa como texto (ej. 'AA:BB:CC:DD:EE:FF'). Cópiala y colócala en el bloque 'Agregar dispositivo ESP-NOW' de LA OTRA placa para que pueda enviarte mensajes a ti.");
       }
     };
 
@@ -2035,6 +2141,68 @@ Blockly.Python.forBlock["esp32_ble_scan"] = function (block, generator) {
 Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
   return `_ble.gap_scan(None)\n`;
 };
+
+    // ---------- GENERADORES ESP-NOW ----------
+
+    Blockly.Python.forBlock["esp32_espnow_init"] = function (block, generator) {
+      generator.definitions_["import_network"] = "import network";
+      generator.definitions_["import_espnow"] = "import espnow";
+      return `wlan = network.WLAN(network.STA_IF)\nwlan.active(True)\n_esp_now = espnow.ESPNow()\n_esp_now.active(True)\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_espnow_add_peer"] = function (block, generator) {
+      const mac = block.getFieldValue("MAC");
+      const macHex = mac.replace(/:/g, "").toUpperCase();
+      return `_esp_now.add_peer(bytes.fromhex("${macHex}"))\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_espnow_send"] = function (block, generator) {
+      const mac = block.getFieldValue("MAC");
+      const macHex = mac.replace(/:/g, "").toUpperCase();
+      const msg = generator.valueToCode(block, "MSG", ORDER_ATOMIC) || "''";
+      return `_esp_now.send(bytes.fromhex("${macHex}"), str(${msg}).encode())\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_espnow_on_receive"] = function (block, generator) {
+      generator.definitions_["import_micropython_irq"] = "import micropython\nmicropython.alloc_emergency_exception_buf(100)";
+      generator.definitions_["espnow_mac_func"] =
+`def _mac_bytes_to_str(b):
+    return ':'.join('%02X' % x for x in b)`;
+      const macVar = generator.getVariableName
+        ? generator.getVariableName(block.getFieldValue("VAR_MAC"))
+        : generator.nameDB_.getName(block.getFieldValue("VAR_MAC"), Blockly.Names.NameType.VARIABLE);
+      const msgVar = generator.getVariableName
+        ? generator.getVariableName(block.getFieldValue("VAR_MSG"))
+        : generator.nameDB_.getName(block.getFieldValue("VAR_MSG"), Blockly.Names.NameType.VARIABLE);
+
+      let body = generator.statementToCode(block, "DO");
+      if (body.trim()) {
+        body = body.split("\n").map(line => line ? "        " + line : line).join("\n");
+      } else {
+        body = "        pass\n";
+      }
+
+      let code = `def _espnow_deferred(arg):\n`;
+      code += `    global ${macVar}, ${msgVar}\n`;
+      code += `    while True:\n`;
+      code += `        _mac, _msg = _esp_now.irecv(0)\n`;
+      code += `        if _mac is None:\n`;
+      code += `            break\n`;
+      code += `        ${macVar} = _mac_bytes_to_str(_mac)\n`;
+      code += `        ${msgVar} = _msg.decode("utf-8", "ignore") if _msg is not None else ""\n`;
+      code += body;
+      code += `def _espnow_handler(e):\n    micropython.schedule(_espnow_deferred, 0)\n`;
+      code += `_esp_now.irq(_espnow_handler)\n`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_espnow_my_mac"] = function (block, generator) {
+      generator.definitions_["import_network"] = "import network";
+      generator.definitions_["espnow_mac_func"] =
+`def _mac_bytes_to_str(b):
+    return ':'.join('%02X' % x for x in b)`;
+      return [`_mac_bytes_to_str(wlan.config('mac'))`, ORDER_ATOMIC];
+    };
 
     // ---------- GENERADORES SENSORES ANALOGICOS ----------
 
