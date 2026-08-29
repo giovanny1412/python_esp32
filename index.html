@@ -89,6 +89,10 @@
       <block type="esp32_pin_irq"><field name="PIN">4</field></block>
       <block type="esp32_timer_irq"><field name="ID">0</field><field name="PERIOD">1000</field></block>
     </category>
+    <category name="🧵 Doble Núcleo" colour="#0369a1">
+      <block type="esp32_core1_loop"></block>
+      <block type="esp32_core_lock"></block>
+    </category>
     <category name="💾 Almacenamiento (Archivos/SD)" colour="#0d9488">
       <block type="esp32_sd_init"><field name="ID">1</field><field name="SCK">18</field><field name="MOSI">23</field><field name="MISO">19</field><field name="CS">5</field></block>
       <block type="esp32_file_write"><field name="FILENAME">datos.txt</field><field name="MODE">a</field></block>
@@ -521,6 +525,30 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setNextStatement(true, null);
         this.setColour("#ea580c");
         this.setTooltip("Colócalo en CONFIGURACION (se registra una sola vez). El código de 'hacer' se ejecuta automáticamente cada X milisegundos, sin importar qué esté haciendo el bucle principal en ese momento. Usa un ID de timer distinto para cada temporizador que uses (0 a 3). Ideal para tareas periódicas exactas (parpadeo, muestreo) sin bloquear el resto del programa con 'Esperar'.");
+      }
+    };
+
+    // ---------- BLOQUES DOBLE NUCLEO ----------
+
+    Blockly.Blocks["esp32_core1_loop"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🧵 Ejecutar en paralelo en el Núcleo 1:");
+        this.appendStatementInput("DO").appendField("hacer (en bucle):");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0369a1");
+        this.setTooltip("Colócalo en CONFIGURACION, una sola vez. El código de 'hacer' se repite para siempre en el segundo núcleo (Núcleo 1) de la ESP32, al mismo tiempo que tu BUCLE PRINCIPAL sigue corriendo normalmente en el Núcleo 0 — como tener dos bucles principales corriendo a la vez, en paralelo de verdad (no por turnos). Útil para separar una tarea que no puede esperar (ej. leer un sensor rápido, controlar audio) de otra que sí puede tardar (ej. WiFi, pantalla). ⚠️ Solo funciona en ESP32 Dev Module y S3 (tienen 2 núcleos); NO funciona en C3 ni C6 (son de un solo núcleo, dará error al ejecutar). ⚠️ Si usas la MISMA variable desde el Núcleo 0 y el Núcleo 1 a la vez, usa el bloque 'Sección protegida' para leerla/modificarla, o podrías obtener valores mezclados o corruptos.");
+      }
+    };
+
+    Blockly.Blocks["esp32_core_lock"] = {
+      init: function () {
+        this.appendDummyInput().appendField("🔒 Sección protegida (evita conflictos entre núcleos):");
+        this.appendStatementInput("DO").appendField("hacer:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#0369a1");
+        this.setTooltip("Usa esto cuando necesites leer o modificar una variable compartida entre el Núcleo 0 (bucle principal) y el Núcleo 1 (bloque 'Ejecutar en paralelo'). Mientras un núcleo está dentro de una sección protegida, el otro núcleo espera automáticamente su turno antes de entrar a SU propia sección protegida, evitando que ambos toquen la misma variable al mismo tiempo. Solo protege lo que pongas dentro de 'hacer' — el resto del código no se ve afectado. Si tu programa no comparte datos entre los dos núcleos, no necesitas este bloque.");
       }
     };
 
@@ -1916,6 +1944,39 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
       code += `def _timer_handler_${id}(t):\n    micropython.schedule(_timer_deferred_${id}, 0)\n`;
       code += `_timer_${id} = Timer(${id})\n`;
       code += `_timer_${id}.init(period=${period}, mode=Timer.PERIODIC, callback=_timer_handler_${id})\n`;
+      return code;
+    };
+
+    // ---------- GENERADORES DOBLE NUCLEO ----------
+
+    Blockly.Python.forBlock["esp32_core1_loop"] = function (block, generator) {
+      generator.definitions_["import_thread"] = "import _thread";
+
+      let body = generator.statementToCode(block, "DO");
+      if (body.trim()) {
+        body = body.split("\n").map(line => line ? "        " + line : line).join("\n");
+      } else {
+        body = "        pass\n";
+      }
+
+      let code = `def _core1_loop():\n    while True:\n${body}\n`;
+      code += `_thread.start_new_thread(_core1_loop, ())\n`;
+      return code;
+    };
+
+    Blockly.Python.forBlock["esp32_core_lock"] = function (block, generator) {
+      generator.definitions_["import_thread"] = "import _thread";
+      generator.definitions_["core_lock_init"] = "_core_lock = _thread.allocate_lock()";
+
+      let body = generator.statementToCode(block, "DO");
+      if (body.trim()) {
+        body = body.split("\n").map(line => line ? "    " + line : line).join("\n");
+      } else {
+        body = "    pass\n";
+      }
+
+      let code = `_core_lock.acquire()\ntry:\n${body}`;
+      code += `finally:\n    _core_lock.release()\n`;
       return code;
     };
 
