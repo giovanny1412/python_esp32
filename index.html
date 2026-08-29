@@ -817,7 +817,7 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour("#7c3aed");
-        this.setTooltip("Colócalo en CONFIGURACION, una sola vez. Activa el WiFi en modo estación (sin conectarse a ninguna red) y prepara ESP-NOW para enviar/recibir. Si también usas el bloque 'Conectar WiFi' en el mismo programa, ESP-NOW sigue funcionando igual mientras esté conectado.");
+        this.setTooltip("Colócalo en CONFIGURACION, una sola vez. Activa el WiFi en modo estación (sin conectarse a ninguna red), fija el canal WiFi en 1 (para que dos placas sin conectar a ninguna red siempre coincidan) y prepara ESP-NOW para enviar/recibir. Si en el mismo programa TAMBIÉN usas el bloque 'Conectar WiFi' para unirte a una red real, coloca 'Conectar WiFi' DESPUÉS de este bloque — al conectar, el canal pasa a ser el del router automáticamente (y todas las placas que quieras que se vean por ESP-NOW deberán estar conectadas a esa misma red o dejarse sin conectar).");
       }
     };
 
@@ -2222,7 +2222,7 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
     Blockly.Python.forBlock["esp32_espnow_init"] = function (block, generator) {
       generator.definitions_["import_network"] = "import network";
       generator.definitions_["import_espnow"] = "import espnow";
-      return `wlan = network.WLAN(network.STA_IF)\nwlan.active(True)\n_esp_now = espnow.ESPNow()\n_esp_now.active(True)\n`;
+      return `wlan = network.WLAN(network.STA_IF)\nwlan.active(True)\nwlan.config(channel=1)\n_esp_now = espnow.ESPNow()\n_esp_now.active(True)\n`;
     };
 
     Blockly.Python.forBlock["esp32_espnow_add_peer"] = function (block, generator) {
