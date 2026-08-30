@@ -1797,6 +1797,26 @@ Blockly.Blocks["esp32_pwm_write"] = {
 
     const ORDER_ATOMIC = (Blockly.Python.ORDER_ATOMIC !== undefined) ? Blockly.Python.ORDER_ATOMIC : 0;
 
+    // Blockly's statementToCode() ya devuelve el codigo con UN nivel de su propia
+    // indentacion nativa (generator.INDENT, 2 espacios) aplicada. Esta funcion la
+    // quita y aplica en su lugar la indentacion exacta que necesitamos (estilo
+    // 4 espacios usado en el resto de este archivo), preservando la anidacion
+    // relativa interna (ej. un "si" con su cuerpo mas adentro sigue mas adentro).
+    function _reindentBody(generator, rawBody, targetIndent) {
+      if (!rawBody || !rawBody.trim()) {
+        return targetIndent + "pass\n";
+      }
+      const native = generator.INDENT || "  ";
+      const lines = rawBody.split("\n");
+      return lines
+        .map(line => {
+          if (!line) return line;
+          const stripped = line.startsWith(native) ? line.slice(native.length) : line;
+          return targetIndent + stripped;
+        })
+        .join("\n");
+    }
+
     // Sobrescribe el generador estándar de "cambiar [variable] por" para que
     // genere una suma simple (variable = variable + N) en lugar del código
     // por defecto de Blockly, que hace "import numbers" + isinstance(...).
@@ -1912,12 +1932,7 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
       if (trigger === "RISING") triggerExpr = "Pin.IRQ_RISING";
       else if (trigger === "FALLING") triggerExpr = "Pin.IRQ_FALLING";
 
-      let body = generator.statementToCode(block, "DO");
-      if (body.trim()) {
-        body = body.split("\n").map(line => line ? "    " + line : line).join("\n");
-      } else {
-        body = "    pass\n";
-      }
+      let body = _reindentBody(generator, generator.statementToCode(block, "DO"), "    ");
 
       const varName = `_pin_irq_${pin}`;
       let code = `def _irq_deferred_${pin}(arg):\n${body}`;
@@ -1933,12 +1948,7 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
       const id = block.getFieldValue("ID");
       const period = block.getFieldValue("PERIOD");
 
-      let body = generator.statementToCode(block, "DO");
-      if (body.trim()) {
-        body = body.split("\n").map(line => line ? "    " + line : line).join("\n");
-      } else {
-        body = "    pass\n";
-      }
+      let body = _reindentBody(generator, generator.statementToCode(block, "DO"), "    ");
 
       let code = `def _timer_deferred_${id}(arg):\n${body}`;
       code += `def _timer_handler_${id}(t):\n    micropython.schedule(_timer_deferred_${id}, 0)\n`;
@@ -1952,12 +1962,7 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
     Blockly.Python.forBlock["esp32_core1_loop"] = function (block, generator) {
       generator.definitions_["import_thread"] = "import _thread";
 
-      let body = generator.statementToCode(block, "DO");
-      if (body.trim()) {
-        body = body.split("\n").map(line => line ? "        " + line : line).join("\n");
-      } else {
-        body = "        pass\n";
-      }
+      let body = _reindentBody(generator, generator.statementToCode(block, "DO"), "        ");
 
       let code = `def _core1_loop():\n    while True:\n${body}\n`;
       code += `_thread.start_new_thread(_core1_loop, ())\n`;
@@ -1968,12 +1973,7 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
       generator.definitions_["import_thread"] = "import _thread";
       generator.definitions_["core_lock_init"] = "_core_lock = _thread.allocate_lock()";
 
-      let body = generator.statementToCode(block, "DO");
-      if (body.trim()) {
-        body = body.split("\n").map(line => line ? "    " + line : line).join("\n");
-      } else {
-        body = "    pass\n";
-      }
+      let body = _reindentBody(generator, generator.statementToCode(block, "DO"), "    ");
 
       let code = `_core_lock.acquire()\ntry:\n${body}`;
       code += `finally:\n    _core_lock.release()\n`;
@@ -2250,12 +2250,7 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
         ? generator.getVariableName(block.getFieldValue("VAR_MSG"))
         : generator.nameDB_.getName(block.getFieldValue("VAR_MSG"), Blockly.Names.NameType.VARIABLE);
 
-      let body = generator.statementToCode(block, "DO");
-      if (body.trim()) {
-        body = body.split("\n").map(line => line ? "        " + line : line).join("\n");
-      } else {
-        body = "        pass\n";
-      }
+      let body = _reindentBody(generator, generator.statementToCode(block, "DO"), "        ");
 
       let code = `def _espnow_deferred(arg):\n`;
       code += `    global ${macVar}, ${msgVar}\n`;
@@ -3421,19 +3416,10 @@ _amp_rate = ${rate}
     Blockly.Python.forBlock["esp32_web_route"] = function (block, generator) {
       const method = block.getFieldValue("METHOD");
       const path = block.getFieldValue("PATH").replace(/'/g, "\'");
-      let body = generator.statementToCode(block, "STACK");
-      // Añadir 2 espacios de indentación para el cuerpo de la función def
-      if (body.trim()) {
-        body = body.split("\n").map(line => line ? "  " + line : line).join("\n");
-      }
+      const body = _reindentBody(generator, generator.statementToCode(block, "STACK"), "    ");
       let code = `def _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}(req_path, req_body):
 `;
-      if (body.trim()) {
-        code += body;
-      } else {
-        code += `  pass
-`;
-      }
+      code += body;
       code += `_web_routes[('${method}', '${path}')] = _route_${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]/g, "_")}
 `;
       return code;
