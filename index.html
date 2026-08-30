@@ -537,7 +537,7 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour("#0369a1");
-        this.setTooltip("Colócalo en CONFIGURACION, una sola vez. El código de 'hacer' se repite para siempre en el segundo núcleo (Núcleo 1) de la ESP32, al mismo tiempo que tu BUCLE PRINCIPAL sigue corriendo normalmente en el Núcleo 0 — como tener dos bucles principales corriendo a la vez, en paralelo de verdad (no por turnos). Útil para separar una tarea que no puede esperar (ej. leer un sensor rápido, controlar audio) de otra que sí puede tardar (ej. WiFi, pantalla). ⚠️ Solo funciona en ESP32 Dev Module y S3 (tienen 2 núcleos); NO funciona en C3 ni C6 (son de un solo núcleo, dará error al ejecutar). ⚠️ Si usas la MISMA variable desde el Núcleo 0 y el Núcleo 1 a la vez, usa el bloque 'Sección protegida' para leerla/modificarla, o podrías obtener valores mezclados o corruptos.");
+        this.setTooltip("⚠️ USA COMO MÁXIMO UN BLOQUE DE ESTE TIPO en todo tu programa — MicroPython en el ESP32 solo permite UN hilo adicional (no dos). Si necesitas varias tareas en paralelo en el Núcleo 1 (ej. un servo que va y vuelve), ponlas TODAS dentro del mismo 'hacer (en bucle):', una después de otra — no uses un segundo bloque de este tipo, fallará al iniciar el segundo hilo mientras el primero sigue corriendo. Colócalo en CONFIGURACION, una sola vez. El código de 'hacer' se repite para siempre en el segundo núcleo (Núcleo 1) de la ESP32, al mismo tiempo que tu BUCLE PRINCIPAL sigue corriendo normalmente en el Núcleo 0 — como tener dos bucles principales corriendo a la vez, en paralelo de verdad (no por turnos). Útil para separar una tarea que no puede esperar (ej. leer un sensor rápido, controlar audio) de otra que sí puede tardar (ej. WiFi, pantalla). ⚠️ Solo funciona en ESP32 Dev Module y S3 (tienen 2 núcleos); NO funciona en C3 ni C6 (son de un solo núcleo, dará error al ejecutar). ⚠️ Si usas la MISMA variable desde el Núcleo 0 y el Núcleo 1 a la vez, usa el bloque 'Sección protegida' para leerla/modificarla, o podrías obtener valores mezclados o corruptos.");
       }
     };
 
@@ -1965,7 +1965,8 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
       let body = _reindentBody(generator, generator.statementToCode(block, "DO"), "        ");
 
       let code = `def _core1_loop():\n    while True:\n${body}\n`;
-      code += `_thread.start_new_thread(_core1_loop, ())\n`;
+      code += `try:\n    _thread.start_new_thread(_core1_loop, ())\n`;
+      code += `except OSError as _e:\n    print("No se pudo iniciar el Nucleo 1 (¿usaste dos bloques de doble nucleo? solo se permite uno):", _e)\n`;
       return code;
     };
 
