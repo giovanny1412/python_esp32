@@ -1169,7 +1169,7 @@ Blockly.Blocks["esp32_pwm_write"] = {
           .appendField(new Blockly.FieldNumber(18, 0, 48, 1), "ECHO");
         this.setOutput(true, "Number");
         this.setColour("#6366f1");
-        this.setTooltip("Retorna la distancia en centimetros.");
+        this.setTooltip("Retorna la distancia en centímetros. Si no detecta ningún eco dentro de ~30ms (sensor desconectado, objeto fuera de rango, o falla de cableado), retorna -1 en vez de quedarse esperando para siempre — revisa ese caso en tu programa si es importante (ej. 'si distancia == -1, hacer...').");
       }
     };
 
@@ -2547,11 +2547,14 @@ Blockly.Python.forBlock["esp32_ble_stop_scan"] = function (block, generator) {
       code += `    _trig_${trig}.value(1)\n`;
       code += `    time.sleep_us(10)\n`;
       code += `    _trig_${trig}.value(0)\n`;
+      code += `    _t0 = time.ticks_us()\n`;
       code += `    while _echo_${echo}.value() == 0:\n`;
-      code += `        pass\n`;
+      code += `        if time.ticks_diff(time.ticks_us(), _t0) > 30000:\n`;
+      code += `            return -1\n`;
       code += `    inicio = time.ticks_us()\n`;
       code += `    while _echo_${echo}.value() == 1:\n`;
-      code += `        pass\n`;
+      code += `        if time.ticks_diff(time.ticks_us(), inicio) > 30000:\n`;
+      code += `            return -1\n`;
       code += `    fin = time.ticks_us()\n`;
       code += `    return (time.ticks_diff(fin, inicio) * 0.0343) / 2\n`;
       generator.definitions_[`ultrasonic_${trig}_${echo}_func`] = code;
