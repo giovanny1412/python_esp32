@@ -3839,9 +3839,11 @@ Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generato
 `;
       code += `            cl, addr = _ws_sock.accept()
 `;
-      code += `            cl.setblocking(False)
+      code += `            cl.settimeout(2)
 `;
       code += `            if _ws_accept_handshake(cl):
+`;
+      code += `                cl.setblocking(False)
 `;
       code += `                _ws_poll.register(cl, select.POLLIN)
 `;
@@ -3855,7 +3857,13 @@ Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generato
 `;
       code += `        except:
 `;
-      code += `            pass
+      code += `            try:
+`;
+      code += `                cl.close()
+`;
+      code += `            except:
+`;
+      code += `                pass
 `;
       code += `    else:
 `;
