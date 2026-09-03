@@ -198,6 +198,7 @@
     <category name="🎤 Micrófono I2S" colour="#db2777">
       <block type="esp32_i2s_mic_init"><field name="ID">0</field><field name="SCK">14</field><field name="WS">15</field><field name="SD">32</field><field name="RATE">16000</field></block>
       <block type="esp32_i2s_mic_read_level"></block>
+      <block type="esp32_i2s_mic_record_wav"><field name="FILENAME">grabacion.wav</field><field name="DURATION">3</field></block>
     </category>
     <category name="🔊 Amplificador MAX98357A" colour="#be123c">
       <block type="esp32_max98357_init"><field name="ID">1</field><field name="BCLK">26</field><field name="WS">25</field><field name="DIN">22</field><field name="RATE">16000</field></block>
@@ -1542,6 +1543,21 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setOutput(true, "Number");
         this.setColour("#db2777");
         this.setTooltip("Requiere el microfono I2S inicializado. Retorna la amplitud pico del ultimo bloque de audio capturado (0 a 32767).");
+      }
+    };
+
+    Blockly.Blocks["esp32_i2s_mic_record_wav"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("🎤 Grabar audio a archivo:")
+          .appendField(new Blockly.FieldTextInput("grabacion.wav"), "FILENAME")
+          .appendField("durante")
+          .appendField(new Blockly.FieldNumber(3, 1, 30, 1), "DURATION")
+          .appendField("segundos");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour("#db2777");
+        this.setTooltip("Requiere el microfono I2S inicializado. Graba desde el INMP441 y guarda un archivo .wav (mono, 16-bit PCM) en la memoria del ESP32 — listo para reproducirlo después con el bloque 'Reproducir audio WAV' del MAX98357A. Es una llamada BLOQUEANTE: el programa se detiene aquí durante todo el tiempo indicado mientras graba. Para que suene a velocidad normal al reproducirlo, la frecuencia de muestreo configurada en 'Inicializar amplificador MAX98357A' debe ser la MISMA que la de 'Inicializar microfono I2S'. Grabaciones largas ocupan bastante memoria flash (aprox. 32 KB por segundo a 16000 Hz) — para clips cortos de voz, 3-5 segundos suele alcanzar.");
       }
     };
 
@@ -2923,6 +2939,7 @@ Blockly.Python.forBlock["esp32_hmc5883l_heading"] = function (block, generator) 
       const rate = block.getFieldValue("RATE");
       return `_mic = I2S(${id}, sck=Pin(${sck}), ws=Pin(${ws}), sd=Pin(${sd}), mode=I2S.RX, bits=32, format=I2S.MONO, rate=${rate}, ibuf=4096)
 _mic_buf = bytearray(4096)
+_mic_rate = ${rate}
 `;
     };
 
@@ -2942,6 +2959,49 @@ _mic_buf = bytearray(4096)
             pico = v
     return pico`;
       return ["_leer_mic_nivel()", ORDER_ATOMIC];
+    };
+
+    Blockly.Python.forBlock["esp32_i2s_mic_record_wav"] = function (block, generator) {
+      generator.definitions_["mic_record_func"] =
+`def _mic_grabar_wav(nombre_archivo, duracion_s):
+    total_muestras = int(_mic_rate * duracion_s)
+    tam_datos = total_muestras * 2
+    f = open(nombre_archivo, "wb")
+    f.write(b"RIFF")
+    f.write((36 + tam_datos).to_bytes(4, "little"))
+    f.write(b"WAVEfmt ")
+    f.write((16).to_bytes(4, "little"))
+    f.write((1).to_bytes(2, "little"))
+    f.write((1).to_bytes(2, "little"))
+    f.write(_mic_rate.to_bytes(4, "little"))
+    f.write((_mic_rate * 2).to_bytes(4, "little"))
+    f.write((2).to_bytes(2, "little"))
+    f.write((16).to_bytes(2, "little"))
+    f.write(b"data")
+    f.write(tam_datos.to_bytes(4, "little"))
+    escritas = 0
+    salida = bytearray(1024)
+    idx_salida = 0
+    while escritas < total_muestras:
+        n = _mic.readinto(_mic_buf)
+        if not n:
+            continue
+        for i in range(0, n, 4):
+            if escritas >= total_muestras:
+                break
+            salida[idx_salida] = _mic_buf[i + 2]
+            salida[idx_salida + 1] = _mic_buf[i + 3]
+            idx_salida += 2
+            escritas += 1
+            if idx_salida >= len(salida):
+                f.write(salida[:idx_salida])
+                idx_salida = 0
+    if idx_salida > 0:
+        f.write(salida[:idx_salida])
+    f.close()`;
+      const filename = block.getFieldValue("FILENAME");
+      const duration = block.getFieldValue("DURATION");
+      return `_mic_grabar_wav("${filename}", ${duration})\n`;
     };
 
     // ---------- GENERADORES AMPLIFICADOR MAX98357A (I2S) ----------
@@ -3632,38 +3692,52 @@ Blockly.Python.forBlock["esp32_websocket_init"] = function (block, generator) {
   code += `        header = struct.pack('!BBQ', 0x81, 127, length)\n`;
   code += `    sock.send(header + data)\n\n`;
 
-  code += `def _ws_recv_exact(sock, length):\n`; // Corrección 3
-  code += `    buf = bytearray()\n`;
-  code += `    while len(buf) < length:\n`;
-  code += `        chunk = sock.recv(length - len(buf))\n`;
-  code += `        if not chunk: return None\n`;
-  code += `        buf.extend(chunk)\n`;
-  code += `    return buf\n\n`;
+  code += `_WS_CLOSED = object()\n\n`;
 
-  code += `def _ws_parse_frame(sock):\n`;
+  code += `def _ws_feed(cid):\n`;
+  code += `    sock = _ws_clients[cid]['sock']\n`;
   code += `    try:\n`;
-  code += `        header = _ws_recv_exact(sock, 2)\n`;
-  code += `        if not header: return None\n`;
-  code += `        opcode = header[0] & 0x0f\n`;
-  code += `        if opcode == 0x08: return None\n`;
-  code += `        length = header[1] & 0x7f\n`;
-  code += `        if length == 126:\n`;
-  code += `            raw_len = _ws_recv_exact(sock, 2)\n`;
-  code += `            if not raw_len: return None\n`;
-  code += `            length = struct.unpack('!H', raw_len)[0]\n`;
-  code += `        elif length == 127:\n`;
-  code += `            raw_len = _ws_recv_exact(sock, 8)\n`;
-  code += `            if not raw_len: return None\n`;
-  code += `            length = struct.unpack('!Q', raw_len)[0]\n`;
-  code += `        mask = _ws_recv_exact(sock, 4)\n`;
-  code += `        if not mask: return None\n`;
-  code += `        data = _ws_recv_exact(sock, length)\n`;
-  code += `        if data is None: return None\n`;
-  code += `        for i in range(len(data)):\n`;
-  code += `            data[i] ^= mask[i % 4]\n`;
+  code += `        chunk = sock.recv(256)\n`;
+  code += `    except OSError as e:\n`;
+  code += `        if len(e.args) and e.args[0] in (11, 35):\n`;
+  code += `            return True\n`;
+  code += `        return False\n`;
+  code += `    if not chunk:\n`;
+  code += `        return False\n`;
+  code += `    _ws_clients[cid]['buf'].extend(chunk)\n`;
+  code += `    return True\n\n`;
+
+  code += `def _ws_try_parse(cid):\n`;
+  code += `    buf = _ws_clients[cid]['buf']\n`;
+  code += `    if len(buf) < 2:\n`;
+  code += `        return None\n`;
+  code += `    opcode = buf[0] & 0x0f\n`;
+  code += `    length = buf[1] & 0x7f\n`;
+  code += `    pos = 2\n`;
+  code += `    if length == 126:\n`;
+  code += `        if len(buf) < pos + 2: return None\n`;
+  code += `        length = struct.unpack('!H', bytes(buf[pos:pos+2]))[0]\n`;
+  code += `        pos += 2\n`;
+  code += `    elif length == 127:\n`;
+  code += `        if len(buf) < pos + 8: return None\n`;
+  code += `        length = struct.unpack('!Q', bytes(buf[pos:pos+8]))[0]\n`;
+  code += `        pos += 8\n`;
+  code += `    if len(buf) < pos + 4:\n`;
+  code += `        return None\n`;
+  code += `    mask = buf[pos:pos+4]\n`;
+  code += `    pos += 4\n`;
+  code += `    if len(buf) < pos + length:\n`;
+  code += `        return None\n`;
+  code += `    data = bytearray(buf[pos:pos+length])\n`;
+  code += `    del buf[:pos+length]\n`;
+  code += `    if opcode == 0x08:\n`;
+  code += `        return _WS_CLOSED\n`;
+  code += `    for i in range(len(data)):\n`;
+  code += `        data[i] ^= mask[i % 4]\n`;
+  code += `    try:\n`;
   code += `        return data.decode('utf-8')\n`;
   code += `    except:\n`;
-  code += `        return None\n\n`;
+  code += `        return _WS_CLOSED\n\n`;
 
   code += `def _ws_accept_handshake(sock):\n`;
   code += `    data = b''\n`;
@@ -3847,7 +3921,7 @@ Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generato
 `;
       code += `                _ws_poll.register(cl, select.POLLIN)
 `;
-      code += `                _ws_clients[id(cl)] = {'sock': cl}
+      code += `                _ws_clients[id(cl)] = {'sock': cl, 'buf': bytearray()}
 `;
       code += `                _ws_last_client = cl
 `;
@@ -3871,9 +3945,41 @@ Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generato
 `;
       code += `        if cid in _ws_clients:
 `;
-      code += `            msg = _ws_parse_frame(sock)
+      code += `            if _ws_feed(cid):
 `;
-      code += `            if msg is None:
+      code += `                while True:
+`;
+      code += `                    msg = _ws_try_parse(cid)
+`;
+      code += `                    if msg is None:
+`;
+      code += `                        break
+`;
+      code += `                    if msg is _WS_CLOSED:
+`;
+      code += `                        try:
+`;
+      code += `                            _ws_poll.unregister(sock)
+`;
+      code += `                            sock.close()
+`;
+      code += `                        except:
+`;
+      code += `                            pass
+`;
+      code += `                        if cid in _ws_clients:
+`;
+      code += `                            del _ws_clients[cid]
+`;
+      code += `                        break
+`;
+      code += `                    else:
+`;
+      code += `                        _ws_clients[cid]['last_msg'] = msg
+`;
+      code += `                        _ws_last_client = sock
+`;
+      code += `            else:
 `;
       code += `                try:
 `;
@@ -3888,12 +3994,6 @@ Blockly.Python.forBlock["esp32_websocket_broadcast"] = function (block, generato
       code += `                if cid in _ws_clients:
 `;
       code += `                    del _ws_clients[cid]
-`;
-      code += `            else:
-`;
-      code += `                _ws_clients[cid]['last_msg'] = msg
-`;
-      code += `                _ws_last_client = sock
 `;
       return code;
     };
