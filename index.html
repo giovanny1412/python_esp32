@@ -55,8 +55,13 @@
         <pre id="codePreview"># El código aparecerá aquí automáticamente...</pre>
       </div>
       <div class="panel-section">
-        <h3>📟 Consola Serie / Estado</h3>
+        <h3>
+          📟 Consola Serie / Estado
+          <button id="btnTogglePlot" onclick="alternarPlotter()" style="float:right; padding:2px 10px; font-size:11px;">📈 Graficar</button>
+        </h3>
         <pre id="consoleLog">>> Listo para conectar con la tarjeta ESP32...</pre>
+        <canvas id="serialPlot" style="display:none; width:100%; flex:1; background:#020617; border-radius:4px; border:1px solid #1e293b;"></canvas>
+        <div id="plotLegend" style="display:none; font-size:11px; color:#94a3b8; padding-top:4px;"></div>
       </div>
     </div>
   </div>
@@ -4174,10 +4179,111 @@ function generarCodigoCompleto() {
 
     let serialReader = null;
 
+    // ============================================
+    // SERIAL PLOTTER
+    // ============================================
+
+    const PLOT_COLORS = ["#38bdf8", "#f472b6", "#facc15", "#34d399", "#f87171", "#a78bfa"];
+    const PLOT_MAX_POINTS = 200;
+    let _plotSeries = [];
+    let _serialLineBuf = "";
+
+    function procesarLineaPlot(linea) {
+      const tokens = linea.trim().split(/[,\s]+/).filter(t => t.length > 0);
+      if (tokens.length === 0) return;
+      const valores = tokens.map(Number);
+      if (valores.some(v => Number.isNaN(v))) return; // linea no numerica (ej. un print de texto), se ignora
+      for (let i = 0; i < valores.length; i++) {
+        if (!_plotSeries[i]) _plotSeries[i] = [];
+        _plotSeries[i].push(valores[i]);
+        if (_plotSeries[i].length > PLOT_MAX_POINTS) _plotSeries[i].shift();
+      }
+      dibujarPlot();
+    }
+
+    function dibujarPlot() {
+      const canvas = document.getElementById("serialPlot");
+      if (!canvas || canvas.style.display === "none") return;
+      const ctx = canvas.getContext("2d");
+      const rect = canvas.getBoundingClientRect();
+      if (canvas.width !== rect.width || canvas.height !== rect.height) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+      }
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      let allVals = [];
+      _plotSeries.forEach(s => { if (s) allVals = allVals.concat(s); });
+      if (allVals.length === 0) return;
+      let minV = Math.min(...allVals);
+      let maxV = Math.max(...allVals);
+      if (minV === maxV) { minV -= 1; maxV += 1; }
+      const margen = (maxV - minV) * 0.1;
+      minV -= margen; maxV += margen;
+
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = (h / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      _plotSeries.forEach((serie, idx) => {
+        if (!serie || serie.length < 2) return;
+        ctx.strokeStyle = PLOT_COLORS[idx % PLOT_COLORS.length];
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        serie.forEach((v, i) => {
+          const x = (i / (PLOT_MAX_POINTS - 1)) * w;
+          const y = h - ((v - minV) / (maxV - minV)) * h;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+
+      const legend = document.getElementById("plotLegend");
+      if (legend) {
+        legend.innerHTML = _plotSeries.map((s, i) => {
+          if (!s || s.length === 0) return "";
+          const last = s[s.length - 1];
+          return `<span style="color:${PLOT_COLORS[i % PLOT_COLORS.length]}">● Valor ${i + 1}: ${last.toFixed(2)}</span>`;
+        }).filter(Boolean).join("&nbsp;&nbsp;&nbsp;");
+      }
+    }
+
+    function alternarPlotter() {
+      const pre = document.getElementById("consoleLog");
+      const canvas = document.getElementById("serialPlot");
+      const legend = document.getElementById("plotLegend");
+      const btn = document.getElementById("btnTogglePlot");
+      const enGrafica = canvas.style.display !== "none";
+      if (enGrafica) {
+        canvas.style.display = "none";
+        legend.style.display = "none";
+        pre.style.display = "";
+        btn.innerText = "📈 Graficar";
+      } else {
+        canvas.style.display = "block";
+        legend.style.display = "block";
+        pre.style.display = "none";
+        btn.innerText = "📟 Ver consola";
+        dibujarPlot();
+      }
+    }
+
     function appendSerialRaw(text) {
       const consoleLog = document.getElementById("consoleLog");
       consoleLog.innerText += text;
       consoleLog.scrollTop = consoleLog.scrollHeight;
+
+      _serialLineBuf += text;
+      const lineas = _serialLineBuf.split("\n");
+      _serialLineBuf = lineas.pop(); // fragmento incompleto, se completa en el proximo chunk
+      lineas.forEach(procesarLineaPlot);
     }
 
     async function leerSerialContinuo() {
