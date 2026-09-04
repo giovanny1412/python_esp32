@@ -2931,7 +2931,8 @@ Blockly.Python.forBlock["esp32_hmc5883l_heading"] = function (block, generator) 
     // ---------- GENERADORES MICROFONO I2S ----------
 
     Blockly.Python.forBlock["esp32_i2s_mic_init"] = function (block, generator) {
-      generator.definitions_["import_i2s"] = "from machine import I2S, Pin";
+      generator.definitions_["import_machine_i2s"] = "from machine import I2S";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const id = block.getFieldValue("ID");
       const sck = block.getFieldValue("SCK");
       const ws = block.getFieldValue("WS");
@@ -3007,7 +3008,8 @@ _mic_rate = ${rate}
     // ---------- GENERADORES AMPLIFICADOR MAX98357A (I2S) ----------
 
     Blockly.Python.forBlock["esp32_max98357_init"] = function (block, generator) {
-      generator.definitions_["import_i2s_amp"] = "from machine import I2S, Pin";
+      generator.definitions_["import_machine_i2s"] = "from machine import I2S";
+      generator.definitions_["import_machine_pin"] = "from machine import Pin";
       const id = block.getFieldValue("ID");
       const bclk = block.getFieldValue("BCLK");
       const ws = block.getFieldValue("WS");
