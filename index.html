@@ -4311,6 +4311,16 @@ function generarCodigoCompleto() {
       try {
         port = await navigator.serial.requestPort();
         await port.open({ baudRate: 115200 });
+        // Algunas placas (ESP32-S3/C3 con USB nativo, sin chip USB-serie como CP2102/CH340)
+        // no comienzan a transmitir/recibir datos hasta que el host activa la señal DTR.
+        // Herramientas como Thonny la activan automáticamente; Web Serial no lo hace por
+        // defecto, así que hay que pedirla explícitamente aquí.
+        try {
+          await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+        } catch (sigErr) {
+          // Algunos puertos/plataformas no soportan setSignals; no es motivo para fallar la conexión.
+          log(">> Aviso: no se pudo configurar DTR/RTS (" + sigErr.message + "), continuando de todos modos.");
+        }
         const textEncoder = new TextEncoderStream();
         textEncoder.readable.pipeTo(port.writable);
         writer = textEncoder.writable.getWriter();
