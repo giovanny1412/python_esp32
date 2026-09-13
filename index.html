@@ -89,6 +89,7 @@
     <category name="⏱️ Tiempo" colour="#5ba5a0">
       <block type="esp32_delay"><field name="SECONDS">1</field></block>
       <block type="esp32_delay_ms"><field name="MS">500</field></block>
+      <block type="esp32_millis"></block>
     </category>
     <category name="⚡ Interrupciones y Timers" colour="#ea580c">
       <block type="esp32_pin_irq"><field name="PIN">4</field></block>
@@ -496,6 +497,15 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour("#5ba5a0");
+      }
+    };
+
+    Blockly.Blocks["esp32_millis"] = {
+      init: function () {
+        this.appendDummyInput().appendField("⏱️ Tiempo transcurrido (ms) desde el arranque");
+        this.setOutput(true, "Number");
+        this.setColour("#5ba5a0");
+        this.setTooltip("Devuelve los milisegundos desde que la placa se encendió (crece siempre, nunca se reinicia solo, salvo overflow después de ~12 días). Útil para medir cuánto tiempo pasó desde algo — por ejemplo, para detectar 'no llegó ningún comando nuevo en los últimos 500ms' y así detener un motor/carro por seguridad si se pierde la conexión.");
       }
     };
 
@@ -1936,6 +1946,11 @@ Blockly.Python.forBlock["esp32_pwm_write"] = function (block, generator) {
       generator.definitions_["import_time"] = "import time";
       const ms = block.getFieldValue("MS");
       return `time.sleep_ms(${ms})\n`;
+    };
+
+    Blockly.Python.forBlock["esp32_millis"] = function (block, generator) {
+      generator.definitions_["import_time"] = "import time";
+      return ["time.ticks_ms()", ORDER_ATOMIC];
     };
 
     // ---------- GENERADORES INTERRUPCIONES Y TIMERS ----------
