@@ -124,6 +124,7 @@
       <block type="esp32_ble_write_char"><field name="UUID">0x2A6E</field></block>
       <block type="esp32_ble_notify"><field name="UUID">0x2A6E</field></block>
       <block type="esp32_ble_read_char"><field name="UUID">0x2A6E</field></block>
+      <block type="esp32_ble_ms_since_write"><field name="UUID">0x2A6E</field></block>
       <block type="esp32_ble_scan"></block>
       <block type="esp32_ble_stop_scan"></block>
     </category>
@@ -803,6 +804,17 @@ Blockly.Blocks["esp32_pwm_write"] = {
         this.setOutput(true, null);
         this.setColour("#3b82f6");
         this.setTooltip("Lee el valor actual de una caracteristica.");
+      }
+    };
+
+    Blockly.Blocks["esp32_ble_ms_since_write"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("⏱️📡 Milisegundos desde la última escritura BLE en UUID:")
+          .appendField(new Blockly.FieldTextInput("0x2A6E"), "UUID");
+        this.setOutput(true, "Number");
+        this.setColour("#3b82f6");
+        this.setTooltip("A diferencia de 'Leer característica BLE' (que solo te dice el ÚLTIMO valor guardado, sin importar si es reciente o viejo), esto te dice cuánto tiempo real pasó desde la última vez que alguien ESCRIBIÓ algo nuevo en esa característica. Ideal para un 'watchdog' de seguridad: si pasó demasiado tiempo sin una escritura nueva (por ejemplo, se cortó la conexión mientras un carro/robot se movía), puedes detectarlo y detener motores por seguridad, algo que NO se puede hacer confiablemente solo con 'Leer característica BLE'. Devuelve 999999 si nunca se ha escrito nada todavía.");
       }
     };
 
@@ -2141,6 +2153,7 @@ Blockly.Python.forBlock["esp32_ble_init"] = function (block, generator) {
   code += `_ble_current_svc = None\n`;
   code += `_ble_handles = {}\n`;
   code += `_ble_connections = set()\n`;
+  code += `_ble_last_write_ms = {}\n`;
   code += `_adv_data = None\n`;
   code += `def _ble_irq(event, data):\n`;
   code += `    global _adv_data\n`;
@@ -2153,8 +2166,24 @@ Blockly.Python.forBlock["esp32_ble_init"] = function (block, generator) {
   code += `        if _adv_data:\n`;
   code += `            try: _ble.gap_advertise(100000, adv_data=_adv_data, connectable=True)\n`;
   code += `            except: pass\n`;
+  code += `    elif event == 3:\n`;
+  code += `        _ble_last_write_ms[data[1]] = time.ticks_ms()\n`;
   code += `_ble.irq(_ble_irq)\n`;
   return code;
+};
+
+Blockly.Python.forBlock["esp32_ble_ms_since_write"] = function (block, generator) {
+  generator.definitions_["import_time"] = "import time";
+  const uuid = block.getFieldValue("UUID");
+  generator.definitions_["ble_ms_since_write_func"] =
+`def _ble_ms_desde_escritura(uuid):
+    if uuid not in _ble_handles:
+        return 999999
+    handle = _ble_handles[uuid]
+    if handle not in _ble_last_write_ms:
+        return 999999
+    return time.ticks_diff(time.ticks_ms(), _ble_last_write_ms[handle])`;
+  return [`_ble_ms_desde_escritura('${uuid}')`, generator.ORDER_ATOMIC];
 };
 
 Blockly.Python.forBlock["esp32_ble_advertise"] = function (block, generator) {
